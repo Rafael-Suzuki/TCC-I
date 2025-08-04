@@ -1,0 +1,5 @@
+<!-- High resolution SVG marker icon -->
+<svg width="50" height="82" viewBox="0 0 25 41" xmlns="http://www.w3.org/2000/svg">
+  <path d="M12.5 0C5.6 0 0 5.6 0 12.5c0 6.9 12.5 28.5 12.5 28.5S25 19.4 25 12.5C25 5.6 19.4 0 12.5 0z" fill="#3388ff" stroke="#fff" stroke-width="2"/>
+  <circle cx="12.5" cy="12.5" r="6" fill="#fff"/>
+</svg>
