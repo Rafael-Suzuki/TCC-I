@@ -1,0 +1,19 @@
+{
+  "name": "monitor-agua-simapi",
+  "version": "1.0.0",
+  "description": "Sistema de Monitoramento de Água - João Monlevade",
+  "private": true,
+  "scripts": {
+    "dev": "concurrently \"cd backend && npm run dev\" \"cd frontend && npm run dev\"",
+    "build": "cd frontend && npm run build",
+    "start": "cd frontend && npm run start",
+    "install-all": "cd backend && npm install && cd ../frontend && npm install",
+    "vercel-build": "cd frontend && npm install && npm run build"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

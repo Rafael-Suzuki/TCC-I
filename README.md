@@ -36,6 +36,18 @@ projeto-tcc-i/
 └── README.md
 ```
 
+## 🚀 Como executar
+
+### Pré-requisitos
+- Node.js (versão 18 ou superior)
+- PostgreSQL
+- npm ou yarn
+
+### Instalação Rápida
+```bash
+node install.js
+```
+
 ## Instalação e Execução
 
 ### Pré-requisitos
@@ -79,6 +91,23 @@ projeto-tcc-i/
 2. **Acessar a aplicação**
    - Frontend: http://localhost:3000
    - Backend API: http://localhost:3001
+
+## 📱 Funcionalidades
+
+- **Mapa Interativo**: Visualização dos bairros de João Monlevade com status de abastecimento
+- **Dashboard Administrativo**: Painel para gestão dos dados
+- **Sistema de Autenticação**: Login seguro com JWT
+- **API REST**: Endpoints para consulta e atualização de dados
+- **Interface Responsiva**: Compatível com dispositivos móveis
+- **Deploy na Nuvem**: Configurado para Vercel com domínio personalizado
+
+## 🌐 Deploy no Vercel
+
+Para fazer o deploy da aplicação no Vercel com o domínio **SIMAPI.ONG.BR**, consulte o arquivo [VERCEL_DEPLOY.md](./VERCEL_DEPLOY.md) que contém instruções detalhadas.
+
+### URLs de Produção
+- **Frontend**: https://simapi.ong.br
+- **API**: https://simapi.ong.br/api
 
 ## Funcionalidades
 

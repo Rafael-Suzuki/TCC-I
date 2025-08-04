@@ -81,11 +81,15 @@ jspm_packages/
 # DynamoDB Local files
 .dynamodb/
 
-# IDE files
+# IDE
 .vscode/
 .idea/
 *.swp
 *.swo
+
+# Vercel
+.vercel
+.vercel.json
 *~
 
 # OS generated files
