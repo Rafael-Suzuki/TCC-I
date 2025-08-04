@@ -43,10 +43,7 @@ projeto-tcc-i/
 - PostgreSQL
 - npm ou yarn
 
-### Instalação Rápida
-```bash
-node install.js
-```
+
 
 ## Instalação e Execução
 
@@ -99,15 +96,7 @@ node install.js
 - **Sistema de Autenticação**: Login seguro com JWT
 - **API REST**: Endpoints para consulta e atualização de dados
 - **Interface Responsiva**: Compatível com dispositivos móveis
-- **Deploy na Nuvem**: Configurado para Vercel com domínio personalizado
 
-## 🌐 Deploy no Vercel
-
-Para fazer o deploy da aplicação no Vercel com o domínio **SIMAPI.ONG.BR**, consulte o arquivo [VERCEL_DEPLOY.md](./VERCEL_DEPLOY.md) que contém instruções detalhadas.
-
-### URLs de Produção
-- **Frontend**: https://simapi.ong.br
-- **API**: https://simapi.ong.br/api
 
 ## Funcionalidades
 
