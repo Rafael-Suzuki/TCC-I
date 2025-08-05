@@ -87,7 +87,7 @@ Todos os 65 bairros oficiais de João Monlevade possuem:
 - Popups informativos
 
 ### Sistema de Cores
-- 🟢 **Verde**: Abastecimento normal
+- 🔵 **Azul**: Abastecimento normal
 - 🟡 **Amarelo**: Abastecimento intermitente
 - 🔴 **Vermelho**: Sem abastecimento
 - ⚪ **Cinza**: Status desconhecido
