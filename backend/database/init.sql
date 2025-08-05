@@ -23,7 +23,7 @@ CREATE TABLE IF NOT EXISTS users (
 CREATE TABLE IF NOT EXISTS neighborhood_status (
     id SERIAL PRIMARY KEY,
     bairro VARCHAR(255) NOT NULL,
-    status VARCHAR(50) NOT NULL CHECK (status IN ('normal', 'intermitente', 'falta')),
+    status VARCHAR(50) NOT NULL CHECK (status IN ('normal', 'intermitente', 'falta', 'manutencao')),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
@@ -62,7 +62,7 @@ INSERT INTO users (nome, email, senha, role)
 VALUES (
     'Rafael Suzuki',
     'rafaelsuzuki@outlook.com.br',
-    '$2b$10$rOzJqKqKqKqKqKqKqKqKqOzJqKqKqKqKqKqKqKqKqKqKqKqKqKqKq',
+    '$2b$10$dvV.hD4xgvjwZk2H8sslT.27QNf8Qwzcc7abT7XGZE/z7CcVxno9S',
     'admin'
 ) ON CONFLICT (email) DO NOTHING;
 

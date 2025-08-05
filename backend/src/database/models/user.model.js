@@ -29,9 +29,9 @@ function createUserModel(sequelize) {
       allowNull: false,
     },
     role: {
-      type: DataTypes.ENUM('admin', 'operador'),
+      type: DataTypes.ENUM('admin', 'user'),
       allowNull: false,
-      defaultValue: 'operador',
+      defaultValue: 'user',
     },
   }, {
     tableName: 'users',

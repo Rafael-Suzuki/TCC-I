@@ -8,12 +8,12 @@ const bcrypt = require('bcrypt');
 function createUserModel(sequelize) {
   const User = sequelize.define('User', {
     id: {
-      type: DataTypes.UUID,
-      defaultValue: DataTypes.UUIDV4,
+      type: DataTypes.INTEGER,
+      autoIncrement: true,
       primaryKey: true,
       allowNull: false,
     },
-    name: {
+    nome: {
       type: DataTypes.STRING(100),
       allowNull: false,
       validate: {
@@ -42,7 +42,7 @@ function createUserModel(sequelize) {
         },
       },
     },
-    password: {
+    senha: {
       type: DataTypes.STRING(255),
       allowNull: false,
       validate: {
@@ -56,18 +56,20 @@ function createUserModel(sequelize) {
       },
     },
     role: {
-      type: DataTypes.ENUM('admin', 'user', 'operator'),
+      type: DataTypes.STRING(50),
       defaultValue: 'user',
       allowNull: false,
+      validate: {
+        isIn: {
+          args: [['admin', 'user']],
+          msg: 'Role deve ser admin ou user',
+        },
+      },
     },
     isActive: {
       type: DataTypes.BOOLEAN,
       defaultValue: true,
       allowNull: false,
-    },
-    lastLogin: {
-      type: DataTypes.DATE,
-      allowNull: true,
     },
     createdAt: {
       type: DataTypes.DATE,
@@ -91,22 +93,19 @@ function createUserModel(sequelize) {
       {
         fields: ['role'],
       },
-      {
-        fields: ['is_active'],
-      },
     ],
     hooks: {
       // Hash da senha antes de salvar
       beforeCreate: async (user) => {
-        if (user.password) {
+        if (user.senha) {
           const saltRounds = 12;
-          user.password = await bcrypt.hash(user.password, saltRounds);
+          user.senha = await bcrypt.hash(user.senha, saltRounds);
         }
       },
       beforeUpdate: async (user) => {
-        if (user.changed('password')) {
+        if (user.changed('senha')) {
           const saltRounds = 12;
-          user.password = await bcrypt.hash(user.password, saltRounds);
+          user.senha = await bcrypt.hash(user.senha, saltRounds);
         }
       },
     },
@@ -114,19 +113,16 @@ function createUserModel(sequelize) {
 
   // Métodos de instância
   User.prototype.validatePassword = async function(password) {
-    return await bcrypt.compare(password, this.password);
+    return await bcrypt.compare(password, this.senha);
   };
 
   User.prototype.toJSON = function() {
     const values = { ...this.get() };
-    delete values.password; // Nunca retornar a senha
+    delete values.senha; // Nunca retornar a senha
     return values;
   };
 
-  User.prototype.updateLastLogin = async function() {
-    this.lastLogin = new Date();
-    await this.save({ fields: ['lastLogin', 'updatedAt'] });
-  };
+
 
   // Métodos estáticos
   User.findByEmail = async function(email) {
@@ -137,7 +133,6 @@ function createUserModel(sequelize) {
 
   User.findActiveUsers = async function() {
     return await this.findAll({
-      where: { isActive: true },
       order: [['createdAt', 'DESC']],
     });
   };

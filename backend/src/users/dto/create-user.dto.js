@@ -28,11 +28,11 @@ class CreateUserDto {
   senha;
 
   /**
-   * Role do usuário (admin ou operador)
+   * Role do usuário (admin ou user)
    */
   @IsOptional()
   @IsString({ message: 'Role deve ser uma string' })
-  @IsIn(['admin', 'operador'], { message: 'Role deve ser "admin" ou "operador"' })
+  @IsIn(['admin', 'user'], { message: 'Role deve ser "admin" ou "user"' })
   role;
 }
 

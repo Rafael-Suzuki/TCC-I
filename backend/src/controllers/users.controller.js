@@ -3,6 +3,7 @@ const Joi = require('joi');
 const { validateBody, validateParams, validateQuery, projectSchemas, commonSchemas } = require('../pipes/validation.pipe');
 const { database } = require('../database/database');
 const { createUserModel } = require('../models/user.model');
+const { requireAuth, requireAdmin } = require('../middleware/jwt.auth');
 
 /**
  * Controller de usuários - Express Router
@@ -29,6 +30,7 @@ function initializeUserModel() {
  * Lista todos os usuários com paginação e filtros
  */
 router.get('/', 
+  requireAuth, // Middleware de autenticação
   validateQuery(Joi.object({
     ...commonSchemas.pagination.describe(),
     ...commonSchemas.search.describe(),
@@ -84,9 +86,9 @@ router.get('/',
         if (role) {
           filteredUsers = filteredUsers.filter(user => user.role === role);
         }
-        if (isActive !== undefined) {
-          filteredUsers = filteredUsers.filter(user => user.isActive === (isActive === 'true'));
-        }
+        // Por padrão, mostrar apenas usuários ativos, a menos que especificado
+        const activeFilter = isActive !== undefined ? isActive === 'true' : true;
+        filteredUsers = filteredUsers.filter(user => user.isActive === activeFilter);
 
         // Paginação
         const startIndex = (page - 1) * limit;
@@ -106,7 +108,8 @@ router.get('/',
       
       const whereClause = {};
       if (role) whereClause.role = role;
-      if (isActive !== undefined) whereClause.isActive = isActive === 'true';
+      // Por padrão, mostrar apenas usuários ativos, a menos que especificado
+      whereClause.isActive = isActive !== undefined ? isActive === 'true' : true;
       
       // Busca por texto
       if (q) {
@@ -143,7 +146,8 @@ router.get('/',
  * Busca um usuário específico por ID
  */
 router.get('/:id',
-  validateParams(commonSchemas.uuidParam),
+  requireAuth, // Middleware de autenticação
+  validateParams(commonSchemas.integerParam),
   async (req, res) => {
     try {
       initializeUserModel();
@@ -184,11 +188,21 @@ router.get('/:id',
  * Cria um novo usuário
  */
 router.post('/',
+  requireAuth,
+  requireAdmin,
+  (req, res, next) => {
+    console.log('=== BEFORE VALIDATION ===');
+    console.log('Raw request body:', req.body);
+    next();
+  },
   validateBody(projectSchemas.createUser),
   async (req, res) => {
     try {
       initializeUserModel();
+      console.log('=== AFTER VALIDATION ===');
+      console.log('Request body received:', req.body);
       const { name, email, password, role } = req.body;
+      console.log('Extracted fields:', { name, email, password, role });
 
       // Se banco estiver desabilitado, simular criação
       if (!User) {
@@ -205,15 +219,33 @@ router.post('/',
       }
 
       // Verificar se email já existe
-      const existingUser = await User.findByEmail(email);
+      const existingUser = await User.findOne({ where: { email: email.toLowerCase() } });
       if (existingUser) {
         return res.error('Email já está em uso', 409);
       }
 
+      // Mapear campos para o modelo do banco (name->nome, password->senha)
+      const userData = {
+        nome: name,
+        email: email.toLowerCase(),
+        senha: password,
+        role: role || 'user'
+      };
+
       // Criar usuário
-      const user = await User.createUser({ name, email, password, role });
+      const user = await User.create(userData);
       
-      res.status(201).success(user, 'Usuário criado com sucesso');
+      // Retornar usuário sem a senha
+      const userResponse = {
+        id: user.id,
+        nome: user.nome,
+        email: user.email,
+        role: user.role,
+        createdAt: user.createdAt,
+        updatedAt: user.updatedAt
+      };
+      
+      res.status(201).success(userResponse, 'Usuário criado com sucesso');
     } catch (error) {
       console.error('Erro ao criar usuário:', error);
       
@@ -235,7 +267,8 @@ router.post('/',
  * Atualiza um usuário existente
  */
 router.put('/:id',
-  validateParams(commonSchemas.uuidParam),
+  requireAuth, requireAdmin, // Middleware de autenticação e autorização
+  validateParams(commonSchemas.integerParam),
   validateBody(projectSchemas.updateUser),
   async (req, res) => {
     try {
@@ -289,7 +322,8 @@ router.put('/:id',
  * Remove um usuário (soft delete)
  */
 router.delete('/:id',
-  validateParams(commonSchemas.uuidParam),
+  requireAuth, requireAdmin, // Middleware de autenticação e autorização
+  validateParams(commonSchemas.integerParam),
   async (req, res) => {
     try {
       initializeUserModel();
@@ -321,7 +355,8 @@ router.delete('/:id',
  * Reativa um usuário desativado
  */
 router.post('/:id/activate',
-  validateParams(commonSchemas.uuidParam),
+  requireAuth, requireAdmin, // Middleware de autenticação e autorização
+  validateParams(commonSchemas.integerParam),
   async (req, res) => {
     try {
       initializeUserModel();

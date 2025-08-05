@@ -22,7 +22,7 @@ export default function Home() {
 
   const fetchNeighborhoods = async () => {
     try {
-      const response = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/status`);
+      const response = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/status?limit=1000`);
       const data = typeof response.data.data === 'string' ? JSON.parse(response.data.data) : response.data.data;
       setNeighborhoods(data?.data || []);
     } catch (error) {
@@ -43,15 +43,17 @@ export default function Home() {
       case 'normal': return 'text-blue-600';
       case 'intermitente': return 'text-yellow-600';
       case 'falta': return 'text-red-600';
+      case 'manutencao': return 'text-orange-600';
       default: return 'text-gray-600';
     }
   };
 
   const getStatusText = (status) => {
     switch (status) {
-      case 'normal': return 'Normal';
+      case 'normal': return 'Sem Informação';
       case 'intermitente': return 'Intermitente';
       case 'falta': return 'Sem Água';
+      case 'manutencao': return 'Manutenção';
       default: return 'Sem Informação';
     }
   };
@@ -120,9 +122,10 @@ export default function Home() {
                     onChange={(e) => setSelectedStatus(e.target.value)}
                   >
                     <option value="all">Todos os Status</option>
-                    <option value="normal">Normal</option>
+                    <option value="normal">Sem Informação</option>
                     <option value="intermitente">Intermitente</option>
                     <option value="falta">Sem Água</option>
+                    <option value="manutencao">Manutenção</option>
                   </select>
                 </div>
 

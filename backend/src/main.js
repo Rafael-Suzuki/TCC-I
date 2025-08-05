@@ -12,6 +12,7 @@ const { loginUser } = require('./middleware/jwt.auth');
 // Importar controllers
 const usersController = require('./controllers/users.controller');
 const statusController = require('./controllers/status.controller');
+const analyticsController = require('./controllers/analytics.controller');
 
 /**
  * Aplicação Express.js para sistema de monitoramento de água
@@ -101,9 +102,9 @@ app.post('/api/auth/login',
   validateBody(projectSchemas.login),
   async (req, res) => {
     try {
-      const { email, password } = req.body;
+      const { email, senha } = req.body;
       
-      const { user, token } = await loginUser(email, password);
+      const { user, token } = await loginUser(email, senha);
       
       res.success({
         user,
@@ -142,11 +143,14 @@ app.post('/api/auth/logout', (req, res) => {
   res.success(null, 'Logout realizado com sucesso');
 });
 
+
+
 /**
  * Montagem das rotas dos controllers
  */
 app.use('/api/users', usersController);
 app.use('/api/status', statusController);
+app.use('/api/analytics', analyticsController);
 
 /**
  * Rota para informações da API

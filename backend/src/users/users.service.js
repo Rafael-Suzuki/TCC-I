@@ -125,7 +125,7 @@ const UsersService = Injectable()(class UsersService {
       nome,
       email,
       senha, // Será criptografada automaticamente pelo hook do modelo
-      role: role || 'operador',
+      role: role || 'user',
     });
 
     // Retornar usuário sem a senha
@@ -197,7 +197,7 @@ const UsersService = Injectable()(class UsersService {
       where: { role: 'admin' },
     });
     const operatorUsers = await this.userModel.count({
-      where: { role: 'operador' },
+      where: { role: 'user' },
     });
 
     // Usuários criados nos últimos 30 dias
@@ -219,7 +219,7 @@ const UsersService = Injectable()(class UsersService {
       recentUsers,
       distribution: {
         admin: Math.round((adminUsers / totalUsers) * 100) || 0,
-        operador: Math.round((operatorUsers / totalUsers) * 100) || 0,
+        user: Math.round((operatorUsers / totalUsers) * 100) || 0,
       },
     };
   }

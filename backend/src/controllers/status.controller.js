@@ -3,6 +3,7 @@ const Joi = require('joi');
 const { validateBody, validateParams, validateQuery, projectSchemas, commonSchemas } = require('../pipes/validation.pipe');
 const { database } = require('../database/database');
 const { createNeighborhoodStatusModel } = require('../models/neighborhood-status.model');
+const { requireAuth, requireAdmin } = require('../middleware/jwt.auth');
 
 /**
  * Controller de status dos bairros - Express Router
@@ -21,6 +22,9 @@ function initializeStatusModel() {
   if (sequelize && !NeighborhoodStatus) {
     NeighborhoodStatus = createNeighborhoodStatusModel(sequelize);
     database.registerModel('NeighborhoodStatus', NeighborhoodStatus);
+    console.log('✅ Modelo NeighborhoodStatus inicializado');
+  } else if (!sequelize) {
+    console.log('⚠️  Sequelize não disponível, usando dados mock');
   }
 }
 
@@ -137,7 +141,7 @@ router.get('/',
       }
 
       // Lógica real com banco de dados
-      const { page = 1, limit = 10, q, status, priority, isResolved, neighborhood, sort = 'desc', sortBy = 'createdAt' } = req.query;
+      const { page = 1, limit = 1000, q, status, priority, isResolved, neighborhood, sort = 'desc', sortBy = 'createdAt' } = req.query;
       
       const whereClause = {};
       if (status) whereClause.status = status;
@@ -224,7 +228,7 @@ router.get('/summary', async (req, res) => {
  * Busca um status específico por ID
  */
 router.get('/:id',
-  validateParams(commonSchemas.uuidParam),
+  validateParams(commonSchemas.integerParam),
   async (req, res) => {
     try {
       initializeStatusModel();
@@ -276,6 +280,7 @@ router.get('/:id',
  * Cria um novo relatório de status
  */
 router.post('/',
+  requireAuth, // Middleware de autenticação
   validateBody(projectSchemas.createNeighborhoodStatus),
   async (req, res) => {
     try {
@@ -329,7 +334,8 @@ router.post('/',
  * Atualiza um status existente
  */
 router.put('/:id',
-  validateParams(commonSchemas.uuidParam),
+  requireAuth, requireAdmin, // Middleware de autenticação e autorização
+  validateParams(commonSchemas.integerParam),
   validateBody(projectSchemas.updateNeighborhoodStatus),
   async (req, res) => {
     try {
@@ -372,7 +378,8 @@ router.put('/:id',
  * Marca um status como resolvido
  */
 router.post('/:id/resolve',
-  validateParams(commonSchemas.uuidParam),
+  requireAuth, requireAdmin, // Middleware de autenticação e autorização
+  validateParams(commonSchemas.integerParam),
   async (req, res) => {
     try {
       initializeStatusModel();
@@ -402,7 +409,8 @@ router.post('/:id/resolve',
  * Marca um status como não resolvido
  */
 router.post('/:id/unresolve',
-  validateParams(commonSchemas.uuidParam),
+  requireAuth, requireAdmin, // Middleware de autenticação e autorização
+  validateParams(commonSchemas.integerParam),
   async (req, res) => {
     try {
       initializeStatusModel();
@@ -432,7 +440,8 @@ router.post('/:id/unresolve',
  * Remove um status
  */
 router.delete('/:id',
-  validateParams(commonSchemas.uuidParam),
+  requireAuth, requireAdmin, // Middleware de autenticação e autorização
+  validateParams(commonSchemas.integerParam),
   async (req, res) => {
     try {
       initializeStatusModel();

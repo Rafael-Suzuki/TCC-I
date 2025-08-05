@@ -93,7 +93,7 @@ const StatusController = Controller('status')(class StatusController {
   }
 
   /**
-   * Criar novo status (operadores e administradores)
+   * Criar novo status (usuários e administradores)
    * POST /api/status
    */
   async create(createStatusDto) {
@@ -114,7 +114,7 @@ const StatusController = Controller('status')(class StatusController {
   }
 
   /**
-   * Atualizar status (operadores e administradores)
+   * Atualizar status (usuários e administradores)
    * PUT /api/status/:id
    */
   async update(id, updateStatusDto) {
@@ -135,7 +135,7 @@ const StatusController = Controller('status')(class StatusController {
   }
 
   /**
-   * Deletar status (operadores e administradores)
+   * Deletar status (usuários e administradores)
    * DELETE /api/status/:id
    */
   async remove(id) {
@@ -204,17 +204,17 @@ Get('bairro/:nome')(StatusController.prototype.findByNeighborhood);
 Post()(StatusController.prototype.create);
 HttpCode(HttpStatus.CREATED)(StatusController.prototype.create);
 UseGuards(JwtAuthGuard, RolesGuard)(StatusController.prototype.create);
-Roles('admin', 'operador')(StatusController.prototype.create);
+Roles('admin', 'user')(StatusController.prototype.create);
 Put(':id')(StatusController.prototype.update);
 UseGuards(JwtAuthGuard, RolesGuard)(StatusController.prototype.update);
-Roles('admin', 'operador')(StatusController.prototype.update);
+Roles('admin', 'user')(StatusController.prototype.update);
 Delete(':id')(StatusController.prototype.remove);
 HttpCode(HttpStatus.NO_CONTENT)(StatusController.prototype.remove);
 UseGuards(JwtAuthGuard, RolesGuard)(StatusController.prototype.remove);
-Roles('admin', 'operador')(StatusController.prototype.remove);
+Roles('admin', 'user')(StatusController.prototype.remove);
 Get('stats/overview')(StatusController.prototype.getStats);
 Put('batch/update')(StatusController.prototype.batchUpdate);
 UseGuards(JwtAuthGuard, RolesGuard)(StatusController.prototype.batchUpdate);
-Roles('admin', 'operador')(StatusController.prototype.batchUpdate);
+Roles('admin', 'user')(StatusController.prototype.batchUpdate);
 
 module.exports = { StatusController };

@@ -55,6 +55,10 @@ const AuthService = Injectable()(class AuthService {
       }
 
       // Valida a senha
+      if (!password || !user.senha) {
+        return null;
+      }
+      
       const isPasswordValid = await bcrypt.compare(password, user.senha);
       
       if (!isPasswordValid) {
@@ -126,7 +130,7 @@ const AuthService = Injectable()(class AuthService {
       nome,
       email,
       senha, // A senha será criptografada automaticamente pelo hook do modelo
-      role: role || 'operador',
+      role: role || 'user',
     });
 
     return user;

@@ -1,4 +1,5 @@
 const jwt = require('jsonwebtoken');
+const bcrypt = require('bcrypt');
 const { database } = require('../database/database');
 const { createUserModel } = require('../models/user.model');
 
@@ -37,6 +38,8 @@ function verifyToken(token) {
  * Requer token válido para prosseguir
  */
 function requireAuth(req, res, next) {
+  console.log('=== REQUIRE AUTH MIDDLEWARE ===');
+  console.log('Authorization header:', req.headers.authorization);
   try {
     // Extrair token do header Authorization
     const authHeader = req.headers.authorization;
@@ -329,23 +332,24 @@ async function loginUser(email, password) {
     }
 
     const User = createUserModel(sequelize);
-    const user = await User.findByEmail(email);
+    const user = await User.findOne({
+      where: { email },
+      attributes: ['id', 'nome', 'email', 'senha', 'role', 'created_at']
+    });
     
     if (!user) {
       throw new Error('Credenciais inválidas');
     }
 
-    if (!user.isActive) {
-      throw new Error('Conta desativada');
-    }
-
-    const isValidPassword = await user.validatePassword(password);
+    if (!password || !user.senha) {
+       throw new Error('Credenciais inválidas');
+     }
+     
+     const isValidPassword = await bcrypt.compare(password, user.senha);
+    
     if (!isValidPassword) {
       throw new Error('Credenciais inválidas');
     }
-
-    // Atualizar último login
-    await user.updateLastLogin();
 
     const token = generateToken(user);
     

@@ -10,7 +10,7 @@ const LocalStrategy = Injectable()(class LocalStrategy extends PassportStrategy(
   constructor(authService) {
     super({
       usernameField: 'email', // Define que o campo de usuário é o email
-      passwordField: 'password', // Define que o campo de senha é 'password'
+      passwordField: 'senha', // Define que o campo de senha é 'senha'
     });
     this.authService = authService;
   }

@@ -8,92 +8,161 @@ import {
   PencilIcon, 
   TrashIcon, 
   ArrowRightOnRectangleIcon,
-  HomeIcon
+  HomeIcon,
+  UsersIcon,
+  ChartBarIcon,
+  Cog6ToothIcon,
+  EyeIcon,
+  EyeSlashIcon
 } from '@heroicons/react/24/outline';
 
 export default function Dashboard() {
   const [neighborhoods, setNeighborhoods] = useState([]);
+  const [users, setUsers] = useState([]);
+  const [analytics, setAnalytics] = useState(null);
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState(null);
+  const [activeTab, setActiveTab] = useState('neighborhoods');
   const [showModal, setShowModal] = useState(false);
+  const [showUserModal, setShowUserModal] = useState(false);
   const [editingNeighborhood, setEditingNeighborhood] = useState(null);
+  const [editingUser, setEditingUser] = useState(null);
+  const [showPassword, setShowPassword] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(20);
+  const [searchTerm, setSearchTerm] = useState('');
   const [formData, setFormData] = useState({
     bairro: '',
     status: 'normal'
   });
+  const [userFormData, setUserFormData] = useState({
+    name: '',
+    email: '',
+    password: '',
+    role: 'operator'
+  });
   const router = useRouter();
+
+  // Filtrar e paginar bairros
+  const filteredNeighborhoods = neighborhoods.filter(neighborhood =>
+    neighborhood.bairro.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const totalPages = Math.ceil(filteredNeighborhoods.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const currentNeighborhoods = filteredNeighborhoods.slice(startIndex, endIndex);
+
+  const handlePageChange = (page) => {
+    setCurrentPage(page);
+  };
+
+  const handleSearchChange = (e) => {
+    setSearchTerm(e.target.value);
+    setCurrentPage(1); // Reset to first page when searching
+  };
 
   useEffect(() => {
     checkAuth();
     fetchNeighborhoods();
   }, []);
 
-  const checkAuth = () => {
-    const token = Cookies.get('token');
-    const userData = Cookies.get('user');
-    
-    if (!token || !userData) {
-      router.push('/login');
-      return;
+  useEffect(() => {
+    if (user?.role === 'admin') {
+      fetchUsers();
+      fetchAnalytics();
     }
-    
+  }, [user]);
+
+  const checkAuth = async () => {
     try {
-      setUser(JSON.parse(userData));
+      const token = Cookies.get('token');
+      if (!token) {
+        router.push('/login');
+        return;
+      }
+
+      const response = await axios.get('http://localhost:3001/api/auth/me', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      // Parse the nested JSON data from /api/auth/me
+      const userData = JSON.parse(response.data.data);
+      setUser(userData.data);
     } catch (error) {
+      console.error('Erro na autenticação:', error);
+      Cookies.remove('token');
+      localStorage.clear();
       router.push('/login');
     }
   };
 
   const fetchNeighborhoods = async () => {
     try {
-      const token = Cookies.get('token');
-      const response = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/status`, {
-        headers: {
-          Authorization: `Bearer ${token}`
-        }
-      });
-      setNeighborhoods(response.data.data || []);
-    } catch (error) {
-      console.error('Erro ao carregar dados:', error);
-      if (error.response?.status === 401) {
-        handleLogout();
+      const response = await axios.get('http://localhost:3001/api/status');
+      
+      // Parse the nested JSON data
+      const parsedData = JSON.parse(response.data.data);
+      
+      const neighborhoods = parsedData.data || [];
+      const pagination = parsedData.pagination || {};
+      
+      setNeighborhoods(Array.isArray(neighborhoods) ? neighborhoods : []);
+      if (pagination.page) {
+        setCurrentPage(pagination.page);
       }
+    } catch (error) {
+      console.error('Erro ao buscar bairros:', error);
+      setNeighborhoods([]);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleLogout = () => {
-    Cookies.remove('token');
-    Cookies.remove('user');
-    router.push('/login');
+  const fetchUsers = async () => {
+    try {
+      const token = Cookies.get('token');
+      const response = await axios.get('http://localhost:3001/api/users', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      console.log('Resposta da API de usuários:', response.data);
+      
+      // Parse the nested JSON data from /api/users
+      const usersData = JSON.parse(response.data.data);
+      setUsers(usersData.data || []);
+    } catch (error) {
+      console.error('Erro ao buscar usuários:', error);
+      setUsers([]);
+    }
+  };
+
+  const fetchAnalytics = async () => {
+    try {
+      console.log('Buscando analytics...');
+      const token = Cookies.get('token');
+      const response = await axios.get('http://localhost:3001/api/analytics/interruptions', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      console.log('Analytics recebidos:', response.data.data);
+      setAnalytics(response.data.data);
+    } catch (error) {
+      console.error('Erro ao buscar análises:', error);
+    }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const token = Cookies.get('token');
-    
     try {
+      const token = Cookies.get('token');
+      
       if (editingNeighborhood) {
-        await axios.put(
-          `${process.env.NEXT_PUBLIC_API_URL}/status/${editingNeighborhood.id}`,
-          formData,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`
-            }
-          }
-        );
+        await axios.put(`http://localhost:3001/api/status/${editingNeighborhood.id}`, formData, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
       } else {
-        await axios.post(
-          `${process.env.NEXT_PUBLIC_API_URL}/status`,
-          formData,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`
-            }
-          }
-        );
+        await axios.post('http://localhost:3001/api/status', formData, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
       }
       
       setShowModal(false);
@@ -102,7 +171,37 @@ export default function Dashboard() {
       fetchNeighborhoods();
     } catch (error) {
       console.error('Erro ao salvar:', error);
-      alert('Erro ao salvar. Tente novamente.');
+      alert('Erro ao salvar dados');
+    }
+  };
+
+  const handleUserSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      const token = Cookies.get('token');
+      
+      if (editingUser) {
+        const updateData = { ...userFormData };
+        if (!updateData.password) {
+          delete updateData.password;
+        }
+        await axios.put(`http://localhost:3001/api/users/${editingUser.id}`, updateData, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+      } else {
+        await axios.post('http://localhost:3001/api/users', userFormData, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+      }
+      
+      setShowUserModal(false);
+      setEditingUser(null);
+      setUserFormData({ name: '', email: '', password: '', role: 'operator' });
+      setShowPassword(false);
+      fetchUsers();
+    } catch (error) {
+      console.error('Erro ao salvar usuário:', error);
+      alert('Erro ao salvar usuário');
     }
   };
 
@@ -115,40 +214,68 @@ export default function Dashboard() {
     setShowModal(true);
   };
 
+  const handleUserEdit = (user) => {
+    setEditingUser(user);
+    setUserFormData({
+      name: user.nome,
+      email: user.email,
+      password: '',
+      role: user.role
+    });
+    setShowUserModal(true);
+  };
+
   const handleDelete = async (id) => {
-    if (!confirm('Tem certeza que deseja excluir este registro?')) return;
-    
-    const token = Cookies.get('token');
-    
-    try {
-      await axios.delete(`${process.env.NEXT_PUBLIC_API_URL}/status/${id}`, {
-        headers: {
-          Authorization: `Bearer ${token}`
-        }
-      });
-      fetchNeighborhoods();
-    } catch (error) {
-      console.error('Erro ao excluir:', error);
-      alert('Erro ao excluir. Tente novamente.');
+    if (confirm('Tem certeza que deseja excluir este bairro?')) {
+      try {
+        const token = Cookies.get('token');
+        await axios.delete(`http://localhost:3001/api/status/${id}`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        fetchNeighborhoods();
+      } catch (error) {
+        console.error('Erro ao excluir:', error);
+        alert('Erro ao excluir bairro');
+      }
     }
   };
 
+  const handleUserDelete = async (id) => {
+    try {
+      const token = Cookies.get('token');
+      await axios.delete(`http://localhost:3001/api/users/${id}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      // Atualizar estado local imediatamente
+      const updatedUsers = users.filter(user => user.id !== id);
+      setUsers(updatedUsers);
+      
+      alert('Usuário excluído com sucesso!');
+    } catch (error) {
+      console.error('Erro ao excluir usuário:', error);
+      alert('Erro ao excluir usuário: ' + (error.response?.data?.message || error.message));
+    }
+  };
+
+  const handleLogout = () => {
+    Cookies.remove('token');
+    router.push('/login');
+  };
+
   const getStatusBadge = (status) => {
-    const classes = {
-      normal: 'bg-blue-100 text-blue-800',
-      intermitente: 'bg-yellow-100 text-yellow-800',
-      falta: 'bg-red-100 text-red-800'
+    const statusMap = {
+      'normal': { color: 'bg-gray-100 text-gray-800', text: 'Sem Informação' },
+      'intermitente': { color: 'bg-yellow-100 text-yellow-800', text: 'Intermitente' },
+      'falta': { color: 'bg-red-100 text-red-800', text: 'Falta de água' },
+      'manutencao': { color: 'bg-blue-100 text-blue-800', text: 'Manutenção' }
     };
     
-    const texts = {
-      normal: 'Normal',
-      intermitente: 'Intermitente',
-      falta: 'Sem Água'
-    };
+    const statusInfo = statusMap[status] || { color: 'bg-gray-100 text-gray-800', text: status };
     
     return (
-      <span className={`px-2 py-1 text-xs font-medium rounded-full ${classes[status] || 'bg-gray-100 text-gray-800'}`}>
-        {texts[status] || 'Desconhecido'}
+      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusInfo.color}`}>
+        {statusInfo.text}
       </span>
     );
   };
@@ -156,7 +283,10 @@ export default function Dashboard() {
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Carregando...</p>
+        </div>
       </div>
     );
   }
@@ -164,120 +294,356 @@ export default function Dashboard() {
   return (
     <>
       <Head>
-        <title>Dashboard - Monitor de Água</title>
+        <title>Dashboard - Monitor Água</title>
       </Head>
-
+      
       <div className="min-h-screen bg-gray-50">
-        {/* Header */}
-        <header className="bg-white shadow-sm border-b">
+        <div className="bg-white shadow">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex justify-between items-center h-16">
-              <div className="flex items-center space-x-4">
-                <h1 className="text-xl font-bold text-gray-900">
-                  💧 Dashboard - Monitor de Água
-                </h1>
+            <div className="flex justify-between items-center py-6">
+              <div className="flex items-center">
+                <HomeIcon className="h-8 w-8 text-blue-600 mr-3" />
+                <div>
+                  <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
+                  <p className="text-sm text-gray-600">Olá, {user?.nome}</p>
+                </div>
               </div>
+              
               <div className="flex items-center space-x-4">
-                <span className="text-sm text-gray-600">
-                  Olá, {user?.nome}
-                </span>
-                <a href="/" className="btn-secondary flex items-center space-x-2">
-                  <HomeIcon className="h-5 w-5" />
-                  <span>Mapa Público</span>
+                <a 
+                  href="/" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+                >
+                  Ver Mapa Público
                 </a>
                 <button
                   onClick={handleLogout}
-                  className="btn-secondary flex items-center space-x-2"
+                  className="flex items-center text-gray-600 hover:text-gray-800"
                 >
-                  <ArrowRightOnRectangleIcon className="h-5 w-5" />
-                  <span>Sair</span>
+                  <ArrowRightOnRectangleIcon className="h-5 w-5 mr-1" />
+                  Sair
                 </button>
               </div>
             </div>
+            
+            <div className="border-b border-gray-200">
+              <nav className="-mb-px flex space-x-8">
+                <button
+                  onClick={() => setActiveTab('neighborhoods')}
+                  className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                    activeTab === 'neighborhoods'
+                      ? 'border-blue-500 text-blue-600'
+                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  }`}
+                >
+                  <HomeIcon className="h-5 w-5 inline mr-2" />
+                  Gerenciar Bairros
+                </button>
+                
+                {user?.role === 'admin' && (
+                  <>
+                    <button
+                      onClick={() => setActiveTab('users')}
+                      className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                        activeTab === 'users'
+                          ? 'border-blue-500 text-blue-600'
+                          : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                      }`}
+                    >
+                      <UsersIcon className="h-5 w-5 inline mr-2" />
+                      Gerenciar Usuários
+                    </button>
+                    
+                    <button
+                      onClick={() => setActiveTab('analytics')}
+                      className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                        activeTab === 'analytics'
+                          ? 'border-blue-500 text-blue-600'
+                          : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                      }`}
+                    >
+                      <ChartBarIcon className="h-5 w-5 inline mr-2" />
+                      Análise de Interrupções
+                    </button>
+                  </>
+                )}
+              </nav>
+            </div>
           </div>
-        </header>
+        </div>
 
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          {/* Actions */}
-          <div className="flex justify-between items-center mb-6">
-            <h2 className="text-2xl font-bold text-gray-900">Status dos Bairros</h2>
-            <button
-              onClick={() => {
-                setEditingNeighborhood(null);
-                setFormData({ bairro: '', status: 'normal' });
-                setShowModal(true);
-              }}
-              className="btn-primary flex items-center space-x-2"
-            >
-              <PlusIcon className="h-5 w-5" />
-              <span>Adicionar Bairro</span>
-            </button>
-          </div>
+        <div className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+          {activeTab === 'neighborhoods' && (
+            <div className="px-4 py-6 sm:px-0">
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-lg font-medium text-gray-900">Status dos Bairros</h2>
+                <button
+                  onClick={() => {
+                    setEditingNeighborhood(null);
+                    setFormData({ bairro: '', status: 'normal' });
+                    setShowModal(true);
+                  }}
+                  className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700"
+                >
+                  <PlusIcon className="h-4 w-4 mr-2" />
+                  Adicionar Bairro
+                </button>
+              </div>
 
-          {/* Table */}
-          <div className="card overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Bairro
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Status
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Última Atualização
-                    </th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Ações
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {neighborhoods.map((neighborhood) => (
-                    <tr key={neighborhood.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                        {neighborhood.bairro}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        {getStatusBadge(neighborhood.status)}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {new Date(neighborhood.updated_at).toLocaleString('pt-BR')}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                        <div className="flex justify-end space-x-2">
+              {/* Search and Info */}
+              <div className="mb-6 space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                  <div className="flex-1 max-w-md">
+                    <input
+                      type="text"
+                      placeholder="Buscar bairro..."
+                      value={searchTerm}
+                      onChange={handleSearchChange}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </div>
+                  <div className="text-sm text-gray-600">
+                    Mostrando {startIndex + 1}-{Math.min(endIndex, filteredNeighborhoods.length)} de {filteredNeighborhoods.length} bairros
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-white shadow overflow-hidden sm:rounded-md">
+                <ul className="divide-y divide-gray-200">
+                  {loading && (
+                    <li className="px-6 py-4 text-center text-gray-500">
+                      Carregando bairros...
+                    </li>
+                  )}
+                  {!loading && filteredNeighborhoods.length === 0 && (
+                    <li className="px-6 py-4 text-center text-gray-500">
+                      {searchTerm ? 'Nenhum bairro encontrado' : 'Nenhum bairro cadastrado'}
+                    </li>
+                  )}
+                  {!loading && currentNeighborhoods.length > 0 && currentNeighborhoods.map((neighborhood) => (
+                    <li key={neighborhood.id} className="px-6 py-4">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center">
+                          <div className="flex-shrink-0">
+                            {getStatusBadge(neighborhood.status)}
+                          </div>
+                          <div className="ml-4">
+                            <div className="text-sm font-medium text-gray-900">
+                              {neighborhood.bairro}
+                            </div>
+                            <div className="text-sm text-gray-500">
+                              Atualizado em: {new Date(neighborhood.updatedAt).toLocaleString('pt-BR')}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex items-center space-x-2">
                           <button
                             onClick={() => handleEdit(neighborhood)}
-                            className="text-primary-600 hover:text-primary-900"
+                            className="text-blue-600 hover:text-blue-900"
                           >
-                            <PencilIcon className="h-5 w-5" />
+                            <PencilIcon className="h-4 w-4" />
                           </button>
                           <button
                             onClick={() => handleDelete(neighborhood.id)}
                             className="text-red-600 hover:text-red-900"
                           >
-                            <TrashIcon className="h-5 w-5" />
+                            <TrashIcon className="h-4 w-4" />
                           </button>
                         </div>
-                      </td>
-                    </tr>
+                      </div>
+                    </li>
                   ))}
-                  {neighborhoods.length === 0 && (
-                    <tr>
-                      <td colSpan="4" className="px-6 py-4 text-center text-gray-500">
-                        Nenhum bairro cadastrado
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
+                </ul>
+              </div>
+
+              {/* Pagination */}
+              {totalPages > 1 && (
+                <div className="mt-6 flex items-center justify-between">
+                  <div className="flex-1 flex justify-between sm:hidden">
+                    <button
+                      onClick={() => handlePageChange(currentPage - 1)}
+                      disabled={currentPage === 1}
+                      className="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Anterior
+                    </button>
+                    <button
+                      onClick={() => handlePageChange(currentPage + 1)}
+                      disabled={currentPage === totalPages}
+                      className="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Próximo
+                    </button>
+                  </div>
+                  <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+                    <div>
+                      <p className="text-sm text-gray-700">
+                        Página <span className="font-medium">{currentPage}</span> de{' '}
+                        <span className="font-medium">{totalPages}</span>
+                      </p>
+                    </div>
+                    <div>
+                      <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+                        <button
+                          onClick={() => handlePageChange(currentPage - 1)}
+                          disabled={currentPage === 1}
+                          className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          <span className="sr-only">Anterior</span>
+                          ←
+                        </button>
+                        {[...Array(totalPages)].map((_, index) => {
+                          const page = index + 1;
+                          const isCurrentPage = page === currentPage;
+                          const showPage = page === 1 || page === totalPages || (page >= currentPage - 2 && page <= currentPage + 2);
+                          
+                          if (!showPage) {
+                            if (page === currentPage - 3 || page === currentPage + 3) {
+                              return (
+                                <span key={page} className="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700">
+                                  ...
+                                </span>
+                              );
+                            }
+                            return null;
+                          }
+                          
+                          return (
+                            <button
+                              key={page}
+                              onClick={() => handlePageChange(page)}
+                              className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
+                                isCurrentPage
+                                  ? 'z-10 bg-blue-50 border-blue-500 text-blue-600'
+                                  : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
+                              }`}
+                            >
+                              {page}
+                            </button>
+                          );
+                        })}
+                        <button
+                          onClick={() => handlePageChange(currentPage + 1)}
+                          disabled={currentPage === totalPages}
+                          className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          <span className="sr-only">Próximo</span>
+                          →
+                        </button>
+                      </nav>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
-          </div>
+          )}
+
+          {activeTab === 'users' && user?.role === 'admin' && (
+            <div className="px-4 py-6 sm:px-0">
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-lg font-medium text-gray-900">Gerenciar Usuários</h2>
+                <button
+                   onClick={() => {
+                     setEditingUser(null);
+                     setUserFormData({ nome: '', email: '', senha: '', role: 'user' });
+                     setShowUserModal(true);
+                   }}
+                   className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700"
+                 >
+                   <PlusIcon className="h-4 w-4 mr-2" />
+                   Adicionar Usuário
+                 </button>
+              </div>
+
+              <div className="bg-white shadow overflow-hidden sm:rounded-md">
+                <ul className="divide-y divide-gray-200">
+                  {users.map((user) => (
+                    <li key={user.id} className="px-6 py-4">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center">
+                          <div className="flex-shrink-0">
+                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                              user.role === 'admin' ? 'bg-purple-100 text-purple-800' : 'bg-gray-100 text-gray-800'
+                            }`}>
+                              {user.role === 'admin' ? 'Administrador' : 'Usuário'}
+                            </span>
+                          </div>
+                          <div className="ml-4">
+                            <div className="text-sm font-medium text-gray-900">
+                              {user.nome}
+                            </div>
+                            <div className="text-sm text-gray-500">
+                              {user.email}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <button
+                            onClick={() => handleUserEdit(user)}
+                            className="text-blue-600 hover:text-blue-900 p-1"
+                            title="Editar usuário"
+                          >
+                            <PencilIcon className="h-4 w-4" />
+                          </button>
+                          <button
+                            onClick={() => {
+                              if (window.confirm(`Tem certeza que deseja deletar o usuário ${user.nome}?`)) {
+                                handleUserDelete(user.id);
+                              }
+                            }}
+                            className="bg-red-500 hover:bg-red-700 text-white px-2 py-1 rounded text-xs font-medium"
+                            title="Deletar usuário"
+                          >
+                            Deletar
+                          </button>
+                        </div>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'analytics' && user?.role === 'admin' && (
+            <div className="px-4 py-6 sm:px-0">
+              <div className="mb-6">
+                <h2 className="text-lg font-medium text-gray-900">Análise de Interrupções</h2>
+                <p className="text-sm text-gray-600">Estatísticas e análises sobre interrupções no abastecimento</p>
+              </div>
+
+              <div className="space-y-6">
+                {analytics ? (
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div className="bg-red-50 p-4 rounded-lg">
+                      <div className="text-2xl font-bold text-red-600">
+                        {analytics.totalInterruptions || 0}
+                      </div>
+                      <div className="text-sm text-red-800">Total de Interrupções</div>
+                    </div>
+                    <div className="bg-yellow-50 p-4 rounded-lg">
+                      <div className="text-2xl font-bold text-yellow-600">
+                        {analytics.averageDuration || 0}h
+                      </div>
+                      <div className="text-sm text-yellow-800">Duração Média</div>
+                    </div>
+                    <div className="bg-blue-50 p-4 rounded-lg">
+                      <div className="text-2xl font-bold text-blue-600">
+                        {analytics.affectedNeighborhoods || 0}
+                      </div>
+                      <div className="text-sm text-blue-800">Bairros Afetados</div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-gray-500">Carregando dados de análise...</div>
+                )}
+              </div>
+            </div>
+          )}
         </div>
 
-        {/* Modal */}
         {showModal && (
           <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
             <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
@@ -292,25 +658,25 @@ export default function Dashboard() {
                     </label>
                     <input
                       type="text"
-                      required
-                      className="input-field"
                       value={formData.bairro}
                       onChange={(e) => setFormData({ ...formData, bairro: e.target.value })}
-                      placeholder="Ex: Centro"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      required
                     />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Status do Abastecimento
+                      Status
                     </label>
                     <select
-                      className="input-field"
                       value={formData.status}
                       onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     >
                       <option value="normal">Normal</option>
                       <option value="intermitente">Intermitente</option>
-                      <option value="falta">Sem Água</option>
+                      <option value="falta">Falta de água</option>
+                      <option value="manutencao">Manutenção</option>
                     </select>
                   </div>
                   <div className="flex justify-end space-x-3 pt-4">
@@ -321,12 +687,111 @@ export default function Dashboard() {
                         setEditingNeighborhood(null);
                         setFormData({ bairro: '', status: 'normal' });
                       }}
-                      className="btn-secondary"
+                      className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300"
                     >
                       Cancelar
                     </button>
-                    <button type="submit" className="btn-primary">
-                      {editingNeighborhood ? 'Atualizar' : 'Adicionar'}
+                    <button
+                      type="submit"
+                      className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700"
+                    >
+                      {editingNeighborhood ? 'Atualizar' : 'Criar'}
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {showUserModal && (
+          <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+            <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+              <div className="mt-3">
+                <h3 className="text-lg font-medium text-gray-900 mb-4">
+                  {editingUser ? 'Editar Usuário' : 'Adicionar Usuário'}
+                </h3>
+                <form onSubmit={handleUserSubmit} className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Nome
+                    </label>
+                    <input
+                      type="text"
+                      value={userFormData.name}
+                      onChange={(e) => setUserFormData({ ...userFormData, name: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Email
+                    </label>
+                    <input
+                      type="email"
+                      value={userFormData.email}
+                      onChange={(e) => setUserFormData({ ...userFormData, email: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Senha {editingUser && '(deixe em branco para manter a atual)'}
+                    </label>
+                    <div className="relative">
+                      <input
+                        type={showPassword ? 'text' : 'password'}
+                        value={userFormData.password}
+                        onChange={(e) => setUserFormData({ ...userFormData, password: e.target.value })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 pr-10"
+                        required={!editingUser}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                      >
+                        {showPassword ? (
+                          <EyeSlashIcon className="h-4 w-4 text-gray-400" />
+                        ) : (
+                          <EyeIcon className="h-4 w-4 text-gray-400" />
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Função
+                    </label>
+                    <select
+                      value={userFormData.role}
+                      onChange={(e) => setUserFormData({ ...userFormData, role: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="user">Usuário</option>
+                      <option value="admin">Administrador</option>
+                    </select>
+                  </div>
+                  <div className="flex justify-end space-x-3 pt-4">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowUserModal(false);
+                        setEditingUser(null);
+                        setUserFormData({ nome: '', email: '', senha: '', role: 'user' });
+                        setShowPassword(false);
+                      }}
+                      className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      type="submit"
+                      className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700"
+                    >
+                      {editingUser ? 'Atualizar' : 'Criar'}
                     </button>
                   </div>
                 </form>

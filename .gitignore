@@ -113,6 +113,9 @@ logs
 tmp/
 temp/
 
+# Scripts de manutenção e análise
+scripts/
+
 # Package lock files (keep only one)
 # package-lock.json
 # yarn.lock

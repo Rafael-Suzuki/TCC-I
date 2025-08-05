@@ -31,11 +31,21 @@ export default function Login() {
     try {
       const response = await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/auth/login`, formData);
       
+      console.log('Resposta da API:', response.data);
+      
       if (response.data.success) {
+        console.log('Login bem-sucedido, salvando cookies...');
+        // Parse the nested JSON data
+        const loginData = JSON.parse(response.data.data);
         // Salvar token nos cookies
-        Cookies.set('token', response.data.data.token, { expires: 7 });
-        Cookies.set('user', JSON.stringify(response.data.data.user), { expires: 7 });
+        Cookies.set('token', loginData.data.token, { expires: 7 });
+        Cookies.set('user', JSON.stringify(loginData.data.user), { expires: 7 });
         
+        // Also save to localStorage for consistency
+        localStorage.setItem('token', loginData.data.token);
+        localStorage.setItem('user', JSON.stringify(loginData.data.user));
+        
+        console.log('Cookies salvos, redirecionando para dashboard...');
         // Redirecionar para dashboard
         router.push('/dashboard');
       }
@@ -145,21 +155,7 @@ export default function Login() {
               </div>
             </form>
 
-            <div className="mt-6">
-              <div className="relative">
-                <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-gray-300" />
-                </div>
-                <div className="relative flex justify-center text-sm">
-                  <span className="px-2 bg-white text-gray-500">Credenciais padrão</span>
-                </div>
-              </div>
 
-              <div className="mt-4 text-sm text-gray-600 bg-gray-50 p-3 rounded">
-                <p><strong>Email:</strong> rafaelsuzuki@outlook.com.br</p>
-                <p><strong>Senha:</strong> admin123</p>
-              </div>
-            </div>
 
             <div className="mt-6 text-center">
               <a

@@ -157,10 +157,20 @@ const commonSchemas = {
     }),
   }),
 
+  // Schema para ID inteiro
+  integerParam: Joi.object({
+    id: Joi.number().integer().positive().required().messages({
+      'number.base': 'ID deve ser um número',
+      'number.integer': 'ID deve ser um número inteiro',
+      'number.positive': 'ID deve ser um número positivo',
+      'any.required': 'ID é obrigatório',
+    }),
+  }),
+
   // Schema para paginação
   pagination: Joi.object({
     page: Joi.number().integer().min(1).default(1),
-    limit: Joi.number().integer().min(1).max(100).default(10),
+    limit: Joi.number().integer().min(1).max(10000).default(1000),
     sort: Joi.string().valid('asc', 'desc').default('desc'),
     sortBy: Joi.string().default('createdAt'),
   }),
@@ -197,7 +207,7 @@ const projectSchemas = {
       'string.min': 'Senha deve ter pelo menos 6 caracteres',
       'any.required': 'Senha é obrigatória',
     }),
-    role: Joi.string().valid('admin', 'user', 'operator').default('user'),
+    role: Joi.string().valid('admin', 'user').default('user'),
   }),
 
   // Schema para atualização de usuário
@@ -212,7 +222,7 @@ const projectSchemas = {
   // Schema para login
   login: Joi.object({
     email: Joi.string().email().required(),
-    password: Joi.string().required(),
+    senha: Joi.string().required(),
   }),
 
   // Schema para criação de status de bairro
@@ -222,7 +232,7 @@ const projectSchemas = {
       'string.max': 'Nome do bairro deve ter no máximo 100 caracteres',
       'any.required': 'Nome do bairro é obrigatório',
     }),
-    status: Joi.string().valid('normal', 'intermitente', 'sem_agua', 'manutencao').required(),
+    status: Joi.string().valid('normal', 'intermitente', 'falta', 'manutencao').required(),
     description: Joi.string().max(500).allow('', null),
     priority: Joi.string().valid('baixa', 'media', 'alta', 'critica').default('media'),
     estimatedRepairTime: Joi.date().iso().greater('now'),
@@ -230,7 +240,7 @@ const projectSchemas = {
 
   // Schema para atualização de status de bairro
   updateNeighborhoodStatus: Joi.object({
-    status: Joi.string().valid('normal', 'intermitente', 'sem_agua', 'manutencao'),
+    status: Joi.string().valid('normal', 'intermitente', 'falta', 'manutencao'),
     description: Joi.string().max(500).allow('', null),
     priority: Joi.string().valid('baixa', 'media', 'alta', 'critica'),
     estimatedRepairTime: Joi.date().iso(),
