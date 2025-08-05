@@ -1,46 +1,23 @@
-import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
-import L from 'leaflet';
+import React, { useEffect, useState } from 'react';
+import dynamic from 'next/dynamic';
 
-// Coordenadas aproximadas de João Monlevade, MG
-const JOAO_MONLEVADE_CENTER = [-19.8117, -43.1731];
-const DEFAULT_ZOOM = 13;
-
-// Função para criar ícones coloridos baseados no status
-const createColoredIcon = (status) => {
-  let color;
-  switch (status) {
-    case 'normal':
-      color = '#3b82f6'; // blue
-      break;
-    case 'intermitente':
-      color = '#f59e0b'; // yellow
-      break;
-    case 'falta':
-      color = '#ef4444'; // red
-      break;
-    case 'manutencao':
-      color = '#ea580c'; // orange
-      break;
-    default:
-      color = '#6b7280'; // gray
-  }
-
-  return L.divIcon({
-    className: 'custom-marker',
-    html: `
-      <div style="
-        background-color: ${color};
-        width: 20px;
-        height: 20px;
-        border-radius: 50%;
-        border: 3px solid white;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.3);
-      "></div>
-    `,
-    iconSize: [20, 20],
-    iconAnchor: [10, 10],
-  });
-};
+// Dynamically import Leaflet components to avoid SSR issues
+const MapContainer = dynamic(
+  () => import('react-leaflet').then((mod) => mod.MapContainer),
+  { ssr: false }
+);
+const TileLayer = dynamic(
+  () => import('react-leaflet').then((mod) => mod.TileLayer),
+  { ssr: false }
+);
+const Marker = dynamic(
+  () => import('react-leaflet').then((mod) => mod.Marker),
+  { ssr: false }
+);
+const Popup = dynamic(
+  () => import('react-leaflet').then((mod) => mod.Popup),
+  { ssr: false }
+);
 
 // Coordenadas dos bairros de João Monlevade
 const neighborhoodCoordinates = {
@@ -111,16 +88,88 @@ const neighborhoodCoordinates = {
   'Zona Rural': [-19.799404, -43.194256]
 };
 
-const getStatusText = (status) => {
-  switch (status) {
-    case 'normal': return 'Sem Informação';
-    case 'intermitente': return 'Abastecimento Intermitente';
-    case 'falta': return 'Sem Abastecimento';
-    case 'manutencao': return 'Em Manutenção';
-    default: return 'Status Desconhecido';
-  }
-};
+const Map = () => {
+  const [neighborhoods, setNeighborhoods] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
+  useEffect(() => {
+    const fetchNeighborhoods = async () => {
+      try {
+        const response = await fetch('http://localhost:3001/api/status');
+        if (!response.ok) {
+          throw new Error('Failed to fetch neighborhood data');
+        }
+        const data = await response.json();
+        setNeighborhoods(data.data || []);
+      } catch (err) {
+        setError(err.message);
+        console.error('Error fetching neighborhoods:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchNeighborhoods();
+  }, []);
+
+  const getMarkerColor = (status) => {
+    switch (status) {
+      case 'normal':
+        return '#3b82f6'; // blue
+      case 'intermitente':
+        return '#f59e0b'; // yellow
+      case 'falta':
+        return '#ef4444'; // red
+      case 'manutencao':
+        return '#ea580c'; // orange
+      default:
+        return '#6b7280'; // gray
+    }
+  };
+
+  const createCustomIcon = (color) => {
+    if (typeof window !== 'undefined') {
+      const L = require('leaflet');
+      return new L.DivIcon({
+        className: 'custom-marker',
+        html: `<div style="background-color: ${color}; width: 20px; height: 20px; border-radius: 50%; border: 3px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3);"></div>`,
+        iconSize: [20, 20],
+        iconAnchor: [10, 10],
+      });
+    }
+    return null;
+  };
+
+  const getStatusText = (status) => {
+    switch (status) {
+      case 'normal': return 'Abastecimento Normal';
+      case 'intermitente': return 'Abastecimento Intermitente';
+      case 'falta': return 'Sem Abastecimento';
+      case 'manutencao': return 'Em Manutenção';
+      default: return 'Status Desconhecido';
+    }
+  };
+
+  const getStatusColor = (status) => {
+    switch (status) {
+      case 'normal': return 'text-blue-600';
+      case 'intermitente': return 'text-yellow-600';
+      case 'falta': return 'text-red-600';
+      case 'manutencao': return 'text-orange-600';
+      default: return 'text-gray-600';
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <div className="text-lg">Carregando mapa...</div>
+      </div>
+    );
+  }
+
+<<<<<<< HEAD
 const getStatusColor = (status) => {
   switch (status) {
     case 'normal': return 'text-blue-600';
@@ -128,55 +177,69 @@ const getStatusColor = (status) => {
     case 'falta': return 'text-red-600';
     case 'manutencao': return 'text-orange-600';
     default: return 'text-gray-600';
+=======
+  if (error) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <div className="text-lg text-red-600">Erro ao carregar dados: {error}</div>
+      </div>
+    );
+>>>>>>> 822bdbb33944834b39048d0e3551f09a0542f87a
   }
-};
 
-const Map = ({ neighborhoods = [] }) => {
   return (
-    <MapContainer
-      center={JOAO_MONLEVADE_CENTER}
-      zoom={DEFAULT_ZOOM}
-      style={{ height: '100%', width: '100%' }}
-      className="rounded-lg"
-    >
-      <TileLayer
-        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-      />
-      
-      {neighborhoods.map((neighborhood) => {
-        const coordinates = neighborhoodCoordinates[neighborhood.bairro] || JOAO_MONLEVADE_CENTER;
-        
-        return (
-          <Marker
-            key={neighborhood.id}
-            position={coordinates}
-            icon={createColoredIcon(neighborhood.status)}
-          >
-            <Popup>
-              <div className="p-2">
-                <h3 className="font-semibold text-lg text-gray-900 mb-2">
-                  {neighborhood.bairro}
-                </h3>
-                <div className="space-y-1">
+    <div className="h-96 w-full">
+      <MapContainer
+        center={[-19.8108, -43.1756]} // Centro de João Monlevade
+        zoom={13}
+        style={{ height: '100%', width: '100%' }}
+      >
+        <TileLayer
+          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        />
+        {neighborhoods.map((neighborhood) => {
+          const coordinates = neighborhoodCoordinates[neighborhood.bairro];
+          if (!coordinates) {
+            console.warn(`Coordinates not found for neighborhood: ${neighborhood.bairro}`);
+            return null;
+          }
+
+          const icon = createCustomIcon(getMarkerColor(neighborhood.status));
+          if (!icon) return null;
+
+          return (
+            <Marker
+              key={neighborhood.id}
+              position={coordinates}
+              icon={icon}
+            >
+              <Popup>
+                <div className="p-2">
+                  <h3 className="font-bold text-lg">{neighborhood.bairro}</h3>
                   <p className="text-sm">
-                    <span className="font-medium">Status:</span>{' '}
-                    <span className={`font-medium ${getStatusColor(neighborhood.status)}`}>
-                      {getStatusText(neighborhood.status)}
+                    Status: <span className={`font-semibold ${
+                      neighborhood.status === 'normal' ? 'text-green-600' :
+                      neighborhood.status === 'intermittent' ? 'text-yellow-600' :
+                      neighborhood.status === 'missing' ? 'text-red-600' :
+                      'text-gray-600'
+                    }`}>
+                      {neighborhood.status === 'normal' ? 'Normal' :
+                       neighborhood.status === 'intermittent' ? 'Intermitente' :
+                       neighborhood.status === 'missing' ? 'Sem água' :
+                       'Desconhecido'}
                     </span>
                   </p>
-                  {neighborhood.updated_at && (
-                    <p className="text-xs text-gray-500">
-                      Atualizado em: {new Date(neighborhood.updated_at).toLocaleString('pt-BR')}
-                    </p>
-                  )}
+                  <p className="text-xs text-gray-500">
+                    Última atualização: {new Date(neighborhood.updatedAt).toLocaleString('pt-BR')}
+                  </p>
                 </div>
-              </div>
-            </Popup>
-          </Marker>
-        );
-      })}
-    </MapContainer>
+              </Popup>
+            </Marker>
+          );
+        })}
+      </MapContainer>
+    </div>
   );
 };
 
