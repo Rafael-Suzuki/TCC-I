@@ -88,30 +88,12 @@ const neighborhoodCoordinates = {
   'Zona Rural': [-19.799404, -43.194256]
 };
 
-const Map = () => {
-  const [neighborhoods, setNeighborhoods] = useState([]);
-  const [loading, setLoading] = useState(true);
+const Map = ({ neighborhoods = [] }) => {
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  useEffect(() => {
-    const fetchNeighborhoods = async () => {
-      try {
-        const response = await fetch('http://localhost:3001/api/status');
-        if (!response.ok) {
-          throw new Error('Failed to fetch neighborhood data');
-        }
-        const data = await response.json();
-        setNeighborhoods(data.data || []);
-      } catch (err) {
-        setError(err.message);
-        console.error('Error fetching neighborhoods:', err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchNeighborhoods();
-  }, []);
+  // Garantir que neighborhoods seja sempre um array
+  const safeNeighborhoods = Array.isArray(neighborhoods) ? neighborhoods : [];
 
   const getMarkerColor = (status) => {
     switch (status) {
@@ -169,22 +151,12 @@ const Map = () => {
     );
   }
 
-<<<<<<< HEAD
-const getStatusColor = (status) => {
-  switch (status) {
-    case 'normal': return 'text-blue-600';
-    case 'intermitente': return 'text-yellow-600';
-    case 'falta': return 'text-red-600';
-    case 'manutencao': return 'text-orange-600';
-    default: return 'text-gray-600';
-=======
   if (error) {
     return (
       <div className="flex items-center justify-center h-96">
         <div className="text-lg text-red-600">Erro ao carregar dados: {error}</div>
       </div>
     );
->>>>>>> 822bdbb33944834b39048d0e3551f09a0542f87a
   }
 
   return (
@@ -198,7 +170,7 @@ const getStatusColor = (status) => {
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         />
-        {neighborhoods.map((neighborhood) => {
+        {safeNeighborhoods.map((neighborhood) => {
           const coordinates = neighborhoodCoordinates[neighborhood.bairro];
           if (!coordinates) {
             console.warn(`Coordinates not found for neighborhood: ${neighborhood.bairro}`);
@@ -220,13 +192,15 @@ const getStatusColor = (status) => {
                   <p className="text-sm">
                     Status: <span className={`font-semibold ${
                       neighborhood.status === 'normal' ? 'text-green-600' :
-                      neighborhood.status === 'intermittent' ? 'text-yellow-600' :
-                      neighborhood.status === 'missing' ? 'text-red-600' :
+                      neighborhood.status === 'intermitente' ? 'text-yellow-600' :
+                      neighborhood.status === 'falta' ? 'text-red-600' :
+                      neighborhood.status === 'manutencao' ? 'text-orange-600' :
                       'text-gray-600'
                     }`}>
                       {neighborhood.status === 'normal' ? 'Normal' :
-                       neighborhood.status === 'intermittent' ? 'Intermitente' :
-                       neighborhood.status === 'missing' ? 'Sem água' :
+                       neighborhood.status === 'intermitente' ? 'Intermitente' :
+                       neighborhood.status === 'falta' ? 'Sem água' :
+                       neighborhood.status === 'manutencao' ? 'Manutenção' :
                        'Desconhecido'}
                     </span>
                   </p>
