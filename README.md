@@ -81,41 +81,12 @@ npm run migration:run
 npm run start:dev
 ```
 
-<<<<<<< HEAD
-## 🛠️ Scripts de Manutenção
-
-A pasta `scripts/` contém utilitários para análise e manutenção do sistema:
-
-### Scripts de Análise de Dados
-- **`analyze-neighborhoods.js`** - Analisa diferenças entre bairros no banco e listas de referência
-- **`check-duplicates.js`** - Verifica duplicatas no banco de dados
-- **`check-count.js`** - Conta registros no banco
-- **`clean-duplicates.js`** - Remove duplicatas do banco
-- **`fix-neighborhoods.js`** - Corrige dados de bairros no banco
-
-### Scripts de Coordenadas e Mapas
-- **`generate-coordinates.js`** - Gera coordenadas para os 65 bairros de João Monlevade
-- **`check-map-coordinates.js`** - Verifica coordenadas dos bairros no mapa
-- **`verify-map-coordinates.js`** - Valida coordenadas dos bairros
-
-### Scripts de Teste
-- **`test-map-integration.js`** - Testa a integração do mapa com a API
-
-**Uso dos scripts:**
-```bash
-# Executar da raiz do projeto
-node scripts/nome-do-script.js
-```
-
-## Contribuição
-=======
 ### Frontend
 ```bash
 cd frontend
 npm install
 npm run dev
 ```
->>>>>>> 822bdbb33944834b39048d0e3551f09a0542f87a
 
 ## 🗂️ Estrutura do Projeto
 
