@@ -125,10 +125,10 @@ const Map = ({ neighborhoods = [] }) => {
 
   const getStatusText = (status) => {
     switch (status) {
-      case 'normal': return 'Abastecimento Normal';
-      case 'intermitente': return 'Abastecimento Intermitente';
-      case 'falta': return 'Sem Abastecimento';
-      case 'manutencao': return 'Em Manutenção';
+      case 'normal': return 'Normal';
+      case 'intermitente': return 'Intermitente';
+      case 'falta': return 'Sem Água';
+      case 'sem_informacao': return 'Sem Informação';
       default: return 'Status Desconhecido';
     }
   };
@@ -136,9 +136,9 @@ const Map = ({ neighborhoods = [] }) => {
   const getStatusColor = (status) => {
     switch (status) {
       case 'normal': return 'text-blue-600';
-      case 'intermitente': return 'text-yellow-600';
+      case 'intermitente': return 'text-orange-600';
       case 'falta': return 'text-red-600';
-      case 'manutencao': return 'text-orange-600';
+      case 'sem_informacao': return 'text-gray-600';
       default: return 'text-gray-600';
     }
   };
@@ -171,7 +171,17 @@ const Map = ({ neighborhoods = [] }) => {
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         />
         {safeNeighborhoods.map((neighborhood) => {
-          const coordinates = neighborhoodCoordinates[neighborhood.bairro];
+          // Usar coordenadas do banco de dados se disponíveis, senão usar coordenadas estáticas
+          let coordinates = null;
+          
+          if (neighborhood.latitude && neighborhood.longitude) {
+            // Coordenadas do banco de dados
+            coordinates = [parseFloat(neighborhood.latitude), parseFloat(neighborhood.longitude)];
+          } else {
+            // Fallback para coordenadas estáticas
+            coordinates = neighborhoodCoordinates[neighborhood.bairro];
+          }
+          
           if (!coordinates) {
             console.warn(`Coordinates not found for neighborhood: ${neighborhood.bairro}`);
             return null;
@@ -204,6 +214,12 @@ const Map = ({ neighborhoods = [] }) => {
                        'Desconhecido'}
                     </span>
                   </p>
+                  {/* Mostrar coordenadas se disponíveis */}
+                  {neighborhood.latitude && neighborhood.longitude && (
+                    <p className="text-xs text-gray-500">
+                      Coordenadas: {parseFloat(neighborhood.latitude).toFixed(6)}, {parseFloat(neighborhood.longitude).toFixed(6)}
+                    </p>
+                  )}
                   <p className="text-xs text-gray-500">
                     Última atualização: {new Date(neighborhood.updatedAt).toLocaleString('pt-BR')}
                   </p>

@@ -22,13 +22,36 @@ function createNeighborhoodStatusModel(sequelize) {
       },
     },
     status: {
-      type: DataTypes.STRING,
+      type: DataTypes.ENUM('normal', 'intermitente', 'falta', 'sem_informacao'),
       allowNull: false,
-      defaultValue: 'normal',
+      defaultValue: 'sem_informacao'
+    },
+    // Coordenadas geográficas do bairro
+    latitude: {
+      type: DataTypes.DECIMAL(9, 6),
+      allowNull: true,
       validate: {
-        isIn: {
-          args: [['normal', 'intermitente', 'falta', 'manutencao']],
-          msg: 'Status deve ser: normal, intermitente, falta ou manutencao',
+        min: {
+          args: [-90],
+          msg: 'Latitude deve estar entre -90 e 90 graus',
+        },
+        max: {
+          args: [90],
+          msg: 'Latitude deve estar entre -90 e 90 graus',
+        },
+      },
+    },
+    longitude: {
+      type: DataTypes.DECIMAL(9, 6),
+      allowNull: true,
+      validate: {
+        min: {
+          args: [-180],
+          msg: 'Longitude deve estar entre -180 e 180 graus',
+        },
+        max: {
+          args: [180],
+          msg: 'Longitude deve estar entre -180 e 180 graus',
         },
       },
     },
@@ -42,6 +65,14 @@ function createNeighborhoodStatusModel(sequelize) {
   NeighborhoodStatus.prototype.updateStatus = async function(newStatus) {
     this.status = newStatus;
     await this.save();
+  };
+
+  // Método para atualizar coordenadas
+  NeighborhoodStatus.prototype.updateCoordinates = async function(latitude, longitude) {
+    this.latitude = latitude;
+    this.longitude = longitude;
+    await this.save();
+    return this;
   };
 
   // Métodos estáticos

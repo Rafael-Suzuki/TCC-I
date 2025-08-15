@@ -41,19 +41,19 @@ export default function Home() {
   const getStatusColor = (status) => {
     switch (status) {
       case 'normal': return 'text-blue-600';
-      case 'intermitente': return 'text-yellow-600';
+      case 'intermitente': return 'text-orange-600';
       case 'falta': return 'text-red-600';
-      case 'manutencao': return 'text-orange-600';
+      case 'sem_informacao': return 'text-gray-600';
       default: return 'text-gray-600';
     }
   };
 
   const getStatusText = (status) => {
     switch (status) {
-      case 'normal': return 'Sem Informação';
+      case 'normal': return 'Normal';
       case 'intermitente': return 'Intermitente';
       case 'falta': return 'Sem Água';
-      case 'manutencao': return 'Manutenção';
+      case 'sem_informacao': return 'Sem Informação';
       default: return 'Sem Informação';
     }
   };
@@ -122,10 +122,10 @@ export default function Home() {
                     onChange={(e) => setSelectedStatus(e.target.value)}
                   >
                     <option value="all">Todos os Status</option>
-                    <option value="normal">Sem Informação</option>
+                    <option value="normal">Normal</option>
                     <option value="intermitente">Intermitente</option>
                     <option value="falta">Sem Água</option>
-                    <option value="manutencao">Manutenção</option>
+                    <option value="sem_informacao">Sem Informação</option>
                   </select>
                 </div>
 
@@ -138,7 +138,7 @@ export default function Home() {
                       <span className="text-sm text-gray-600">Normal</span>
                     </div>
                     <div className="flex items-center space-x-2">
-                      <div className="w-4 h-4 bg-yellow-500 rounded-full"></div>
+                      <div className="w-4 h-4 bg-orange-500 rounded-full"></div>
                       <span className="text-sm text-gray-600">Intermitente</span>
                     </div>
                     <div className="flex items-center space-x-2">

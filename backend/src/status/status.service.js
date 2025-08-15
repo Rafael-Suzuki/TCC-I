@@ -290,15 +290,64 @@ const StatusService = Injectable()(class StatusService {
   }
 
   /**
+   * Atualizar coordenadas de um bairro
+   * @param {number} id - ID do status
+   * @param {Object} coordsData - Dados das coordenadas
+   * @param {number} coordsData.latitude - Latitude (-90 a 90)
+   * @param {number} coordsData.longitude - Longitude (-180 a 180)
+   * @param {number} coordsData.userId - ID do usuário que está fazendo a alteração
+   * @returns {Promise<Object>} - Status atualizado com coordenadas
+   */
+  async updateCoords(id, { latitude, longitude, userId }) {
+    // Inicializa o modelo se necessário
+    this.initializeModel();
+    
+    if (!this.neighborhoodStatusModel) {
+      throw new Error('Modelo NeighborhoodStatus não inicializado');
+    }
+
+    // Validar coordenadas
+    if (latitude < -90 || latitude > 90) {
+      throw new Error('Latitude deve estar entre -90 e 90 graus');
+    }
+    
+    if (longitude < -180 || longitude > 180) {
+      throw new Error('Longitude deve estar entre -180 e 180 graus');
+    }
+
+    // Buscar o status
+    const status = await this.neighborhoodStatusModel.findByPk(id);
+
+    if (!status) {
+      throw new NotFoundException(`Status com ID ${id} não encontrado`);
+    }
+
+    // Atualizar coordenadas
+    await status.update({
+      latitude: parseFloat(latitude),
+      longitude: parseFloat(longitude),
+    });
+
+    return {
+      id: status.id,
+      bairro: status.bairro,
+      status: status.status,
+      latitude: status.latitude,
+      longitude: status.longitude,
+      updated_at: status.updatedAt,
+    };
+  }
+
+  /**
    * Obter mapa de cores para o frontend
    * @returns {Object} - Mapa de cores por status
    */
   getStatusColorMap() {
     return {
-      ok: '#007bff',
-      manutencao: '#ffc107',
-      desabastecido: '#dc3545',
-      sem_info: '#6c757d',
+      normal: '#3B82F6', // blue-500
+      intermitente: '#F97316', // orange-500
+      falta: '#EF4444', // red-500
+      sem_informacao: '#9CA3AF' // gray-400
     };
   }
 });

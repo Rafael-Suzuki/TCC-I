@@ -17,9 +17,9 @@ function createNeighborhoodStatusModel(sequelize) {
       unique: true,
     },
     status: {
-      type: DataTypes.ENUM('ok', 'manutencao', 'desabastecido', 'sem_info'),
+      type: DataTypes.ENUM('normal', 'intermitente', 'intermitente_manutencao', 'falta', 'falta_manutencao', 'sem_informacao'),
       allowNull: false,
-      defaultValue: 'sem_info',
+      defaultValue: 'sem_informacao',
     },
   }, {
     tableName: 'neighborhood_status',
@@ -38,10 +38,12 @@ function createNeighborhoodStatusModel(sequelize) {
    */
   NeighborhoodStatus.prototype.getStatusDescription = function() {
     const descriptions = {
-      ok: 'Fornecimento normal',
-      manutencao: 'Em manutenção',
-      desabastecido: 'Sem água',
-      sem_info: 'Sem informação',
+      normal: 'Normal',
+      intermitente: 'Intermitente',
+      intermitente_manutencao: 'Intermitente em Manutenção',
+      falta: 'Sem Água',
+      falta_manutencao: 'Sem Água em Manutenção',
+      sem_informacao: 'Sem Informação',
     };
     return descriptions[this.status] || 'Status desconhecido';
   };
@@ -51,12 +53,14 @@ function createNeighborhoodStatusModel(sequelize) {
    */
   NeighborhoodStatus.prototype.getStatusColor = function() {
     const colors = {
-      ok: '#28a745',
-      manutencao: '#ffc107',
-      desabastecido: '#dc3545',
-      sem_info: '#6c757d',
+      normal: '#3b82f6', // Azul
+      intermitente: '#f59e0b', // Laranja
+      intermitente_manutencao: '#f59e0b', // Laranja
+      falta: '#ef4444', // Vermelho
+      falta_manutencao: '#ef4444', // Vermelho
+      sem_informacao: '#6b7280', // Cinza
     };
-    return colors[this.status] || '#6c757d';
+    return colors[this.status] || '#6b7280';
   };
 
   /**

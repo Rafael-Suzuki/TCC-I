@@ -23,7 +23,9 @@ CREATE TABLE IF NOT EXISTS users (
 CREATE TABLE IF NOT EXISTS neighborhood_status (
     id SERIAL PRIMARY KEY,
     bairro VARCHAR(255) NOT NULL,
-    status VARCHAR(50) NOT NULL CHECK (status IN ('normal', 'intermitente', 'falta', 'manutencao')),
+    status VARCHAR(50) NOT NULL CHECK (status IN ('normal', 'intermitente', 'falta', 'sem_informacao')),
+    latitude NUMERIC(9,6),
+    longitude NUMERIC(9,6),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
@@ -33,6 +35,7 @@ CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
 CREATE INDEX IF NOT EXISTS idx_neighborhood_status_bairro ON neighborhood_status(bairro);
 CREATE INDEX IF NOT EXISTS idx_neighborhood_status_status ON neighborhood_status(status);
 CREATE INDEX IF NOT EXISTS idx_neighborhood_status_created_at ON neighborhood_status(created_at);
+CREATE INDEX IF NOT EXISTS idx_neighborhood_status_lat_lng ON neighborhood_status(latitude, longitude);
 
 -- Função para atualizar updated_at automaticamente
 CREATE OR REPLACE FUNCTION update_updated_at_column()
@@ -74,7 +77,10 @@ INSERT INTO neighborhood_status (bairro, status) VALUES
     ('Eldorado', 'normal'),
     ('Caetés', 'falta'),
     ('Ponte da Aldeia', 'normal'),
-    ('Água Limpa', 'intermitente')
+    ('Água Limpa', 'intermitente'),
+    ('Vila Rica', 'intermitente'),
+    ('Rosário', 'falta'),
+    ('Antônio Dias', 'sem_informacao')
 ON CONFLICT DO NOTHING;
 
 -- Comentários nas tabelas
@@ -82,6 +88,6 @@ COMMENT ON TABLE users IS 'Tabela de usuários do sistema';
 COMMENT ON TABLE neighborhood_status IS 'Tabela de status de abastecimento de água por bairro';
 
 COMMENT ON COLUMN users.role IS 'Papel do usuário: admin ou user';
-COMMENT ON COLUMN neighborhood_status.status IS 'Status do abastecimento: normal, intermitente ou falta';
+COMMENT ON COLUMN neighborhood_status.status IS 'Status do abastecimento: normal, intermitente, falta, sem_informacao';
 
 PRINT 'Banco de dados inicializado com sucesso!';

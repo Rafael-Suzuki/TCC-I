@@ -195,6 +195,35 @@ const StatusController = Controller('status')(class StatusController {
       };
     }
   }
+
+  /**
+   * Atualizar coordenadas de um bairro (apenas operadores e administradores)
+   * PUT /api/status/:id/coords
+   */
+  async updateCoords(id, coordsDto, req) {
+    try {
+      const { latitude, longitude } = coordsDto;
+      const userId = req.user?.id || null;
+      
+      const result = await this.statusService.updateCoords(parseInt(id), {
+        latitude,
+        longitude,
+        userId,
+      });
+      
+      return {
+        success: true,
+        message: 'Coordenadas atualizadas com sucesso',
+        data: result,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: 'Erro ao atualizar coordenadas',
+        error: error.message,
+      };
+    }
+  }
 });
 
 // Aplicar decorators aos métodos
@@ -216,5 +245,8 @@ Get('stats/overview')(StatusController.prototype.getStats);
 Put('batch/update')(StatusController.prototype.batchUpdate);
 UseGuards(JwtAuthGuard, RolesGuard)(StatusController.prototype.batchUpdate);
 Roles('admin', 'user')(StatusController.prototype.batchUpdate);
+Put(':id/coords')(StatusController.prototype.updateCoords);
+UseGuards(JwtAuthGuard, RolesGuard)(StatusController.prototype.updateCoords);
+Roles('admin', 'operator')(StatusController.prototype.updateCoords);
 
 module.exports = { StatusController };

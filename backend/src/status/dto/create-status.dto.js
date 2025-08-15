@@ -16,8 +16,8 @@ class CreateStatusDto {
    */
   @IsOptional()
   @IsString({ message: 'Status deve ser uma string' })
-  @IsIn(['ok', 'manutencao', 'desabastecido', 'sem_info'], {
-    message: 'Status deve ser "ok", "manutencao", "desabastecido" ou "sem_info"',
+  @IsIn(['normal', 'intermitente', 'falta', 'sem_informacao'], {
+    message: 'Status deve ser "normal", "intermitente", "falta" ou "sem_informacao"',
   })
   status;
 }

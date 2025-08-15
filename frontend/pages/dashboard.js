@@ -13,8 +13,10 @@ import {
   ChartBarIcon,
   Cog6ToothIcon,
   EyeIcon,
-  EyeSlashIcon
+  EyeSlashIcon,
+  MapPinIcon
 } from '@heroicons/react/24/outline';
+import MapPicker from '../components/MapPicker';
 
 export default function Dashboard() {
   const [neighborhoods, setNeighborhoods] = useState([]);
@@ -25,15 +27,17 @@ export default function Dashboard() {
   const [activeTab, setActiveTab] = useState('neighborhoods');
   const [showModal, setShowModal] = useState(false);
   const [showUserModal, setShowUserModal] = useState(false);
+  const [showCoordsModal, setShowCoordsModal] = useState(false);
   const [editingNeighborhood, setEditingNeighborhood] = useState(null);
   const [editingUser, setEditingUser] = useState(null);
+  const [editingCoords, setEditingCoords] = useState(null);
   const [showPassword, setShowPassword] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(20);
   const [searchTerm, setSearchTerm] = useState('');
   const [formData, setFormData] = useState({
     bairro: '',
-    status: 'normal'
+    status: 'sem_informacao'
   });
   const [userFormData, setUserFormData] = useState({
     name: '',
@@ -167,7 +171,7 @@ export default function Dashboard() {
       
       setShowModal(false);
       setEditingNeighborhood(null);
-      setFormData({ bairro: '', status: 'normal' });
+      setFormData({ bairro: '', status: 'sem_informacao' });
       fetchNeighborhoods();
     } catch (error) {
       console.error('Erro ao salvar:', error);
@@ -212,6 +216,41 @@ export default function Dashboard() {
       status: neighborhood.status
     });
     setShowModal(true);
+  };
+
+  // Função para editar coordenadas
+  const handleEditCoords = (neighborhood) => {
+    setEditingCoords(neighborhood);
+    setShowCoordsModal(true);
+  };
+
+  // Função para atualizar coordenadas
+  const handleUpdateCoords = async (latitude, longitude) => {
+    try {
+      const token = Cookies.get('token');
+      await axios.put(
+        `http://localhost:3001/api/status/${editingCoords.id}/coords`,
+        { latitude, longitude },
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+      
+      // Atualizar a lista de bairros
+      await fetchNeighborhoods();
+      
+      // Fechar modal
+      setShowCoordsModal(false);
+      setEditingCoords(null);
+      
+      alert('Coordenadas atualizadas com sucesso!');
+    } catch (error) {
+      console.error('Erro ao atualizar coordenadas:', error);
+      alert('Erro ao atualizar coordenadas: ' + (error.response?.data?.message || error.message));
+    }
   };
 
   const handleUserEdit = (user) => {
@@ -265,13 +304,13 @@ export default function Dashboard() {
 
   const getStatusBadge = (status) => {
     const statusMap = {
-      'normal': { color: 'bg-gray-100 text-gray-800', text: 'Sem Informação' },
-      'intermitente': { color: 'bg-yellow-100 text-yellow-800', text: 'Intermitente' },
-      'falta': { color: 'bg-red-100 text-red-800', text: 'Falta de água' },
-      'manutencao': { color: 'bg-blue-100 text-blue-800', text: 'Manutenção' }
+      'normal': { color: 'bg-blue-100 text-blue-800', text: 'Normal' },
+      'intermitente': { color: 'bg-orange-100 text-orange-800', text: 'Intermitente' },
+      'falta': { color: 'bg-red-100 text-red-800', text: 'Sem Água' },
+      'sem_informacao': { color: 'bg-gray-100 text-gray-800', text: 'Sem Informação' }
     };
     
-    const statusInfo = statusMap[status] || { color: 'bg-gray-100 text-gray-800', text: status };
+    const statusInfo = statusMap[status] || { color: 'bg-gray-100 text-gray-800', text: 'Desconhecido' };
     
     return (
       <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusInfo.color}`}>
@@ -292,11 +331,10 @@ export default function Dashboard() {
   }
 
   return (
-    <>
+    <div>
       <Head>
         <title>Dashboard - Monitor Água</title>
       </Head>
-      
       <div className="min-h-screen bg-gray-50">
         <div className="bg-white shadow">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -382,7 +420,7 @@ export default function Dashboard() {
                 <button
                   onClick={() => {
                     setEditingNeighborhood(null);
-                    setFormData({ bairro: '', status: 'normal' });
+                    setFormData({ bairro: '', status: 'sem_informacao' });
                     setShowModal(true);
                   }}
                   className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700"
@@ -442,12 +480,21 @@ export default function Dashboard() {
                           <button
                             onClick={() => handleEdit(neighborhood)}
                             className="text-blue-600 hover:text-blue-900"
+                            title="Editar bairro"
                           >
                             <PencilIcon className="h-4 w-4" />
                           </button>
                           <button
+                            onClick={() => handleEditCoords(neighborhood)}
+                            className="text-green-600 hover:text-green-900"
+                            title="Editar coordenadas"
+                          >
+                            <MapPinIcon className="h-4 w-4" />
+                          </button>
+                          <button
                             onClick={() => handleDelete(neighborhood.id)}
                             className="text-red-600 hover:text-red-900"
+                            title="Excluir bairro"
                           >
                             <TrashIcon className="h-4 w-4" />
                           </button>
@@ -669,15 +716,16 @@ export default function Dashboard() {
                       Status
                     </label>
                     <select
-                      value={formData.status}
-                      onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    >
-                      <option value="normal">Normal</option>
-                      <option value="intermitente">Intermitente</option>
-                      <option value="falta">Falta de água</option>
-                      <option value="manutencao">Manutenção</option>
-                    </select>
+                        value={formData.status}
+                        onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        required
+                      >
+                        <option value="normal">Normal</option>
+                        <option value="intermitente">Intermitente</option>
+                        <option value="falta">Sem Água</option>
+                        <option value="sem_informacao">Sem Informação</option>
+                      </select>
                   </div>
                   <div className="flex justify-end space-x-3 pt-4">
                     <button
@@ -685,7 +733,7 @@ export default function Dashboard() {
                       onClick={() => {
                         setShowModal(false);
                         setEditingNeighborhood(null);
-                        setFormData({ bairro: '', status: 'normal' });
+                        setFormData({ bairro: '', status: 'sem_informacao' });
                       }}
                       className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300"
                     >
@@ -799,7 +847,64 @@ export default function Dashboard() {
             </div>
           </div>
         )}
+
+        {/* Modal de Coordenadas */}
+        {showCoordsModal && (
+          <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+            <div className="relative top-20 mx-auto p-5 border w-11/12 max-w-4xl shadow-lg rounded-md bg-white">
+              <div className="mt-3">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-medium text-gray-900">
+                    Editar Coordenadas - {editingCoords?.bairro}
+                  </h3>
+                  <button
+                    onClick={() => {
+                      setShowCoordsModal(false);
+                      setEditingCoords(null);
+                    }}
+                    className="text-gray-400 hover:text-gray-600"
+                  >
+                    <span className="sr-only">Fechar</span>
+                    ✕
+                  </button>
+                </div>
+                
+                <div className="mb-4">
+                  <p className="text-sm text-gray-600">
+                    Selecione a localização do bairro <strong>{editingCoords?.bairro}</strong> no mapa abaixo.
+                  </p>
+                  {editingCoords?.latitude && editingCoords?.longitude && (
+                    <p className="text-sm text-blue-600 mt-1">
+                      Coordenadas atuais: {parseFloat(editingCoords.latitude).toFixed(6)}, {parseFloat(editingCoords.longitude).toFixed(6)}
+                    </p>
+                  )}
+                </div>
+
+                <MapPicker
+                  initialLatLng={
+                    editingCoords?.latitude && editingCoords?.longitude
+                      ? [parseFloat(editingCoords.latitude), parseFloat(editingCoords.longitude)]
+                      : null
+                  }
+                  onPick={handleUpdateCoords}
+                />
+
+                <div className="mt-6 flex justify-end space-x-3">
+                  <button
+                    onClick={() => {
+                      setShowCoordsModal(false);
+                      setEditingCoords(null);
+                    }}
+                    className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                  >
+                    Cancelar
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
-    </>
+    </div>
   );
 }

@@ -36,7 +36,7 @@ router.get('/',
   validateQuery(Joi.object({
     ...commonSchemas.pagination.describe(),
     ...commonSchemas.search.describe(),
-    status: Joi.string().valid('normal', 'intermitente', 'sem_agua', 'manutencao'),
+    status: Joi.string().valid('normal', 'intermitente', 'falta', 'sem_informacao').required(),
     priority: Joi.string().valid('baixa', 'media', 'alta', 'critica'),
     isResolved: Joi.boolean(),
     neighborhood: Joi.string(),
@@ -77,7 +77,7 @@ router.get('/',
           {
             id: '550e8400-e29b-41d4-a716-446655440003',
             neighborhood: 'Bairro São José',
-            status: 'sem_agua',
+            status: 'falta',
             description: 'Falta total de água devido a rompimento na rede',
             priority: 'critica',
             isResolved: false,
@@ -90,7 +90,7 @@ router.get('/',
           {
             id: '550e8400-e29b-41d4-a716-446655440004',
             neighborhood: 'Jardim Alvorada',
-            status: 'manutencao',
+            status: 'intermitente_manutencao',
             description: 'Manutenção programada na estação de tratamento',
             priority: 'alta',
             isResolved: false,
@@ -431,6 +431,79 @@ router.post('/:id/unresolve',
     } catch (error) {
       console.error('Erro ao marcar status como não resolvido:', error);
       res.error('Erro ao marcar status como não resolvido', 500);
+    }
+  }
+);
+
+/**
+ * PUT /api/status/:id/coords
+ * Atualiza coordenadas de um bairro (apenas operadores e administradores)
+ */
+router.put('/:id/coords',
+  requireAuth, // Middleware de autenticação
+  validateParams(commonSchemas.integerParam),
+  validateBody(Joi.object({
+    latitude: Joi.number().min(-90).max(90).required()
+      .messages({
+        'number.min': 'Latitude deve estar entre -90 e 90 graus',
+        'number.max': 'Latitude deve estar entre -90 e 90 graus',
+        'any.required': 'Latitude é obrigatória'
+      }),
+    longitude: Joi.number().min(-180).max(180).required()
+      .messages({
+        'number.min': 'Longitude deve estar entre -180 e 180 graus',
+        'number.max': 'Longitude deve estar entre -180 e 180 graus',
+        'any.required': 'Longitude é obrigatória'
+      })
+  })),
+  async (req, res) => {
+    try {
+      initializeStatusModel();
+      const { id } = req.params;
+      const { latitude, longitude } = req.body;
+      const userId = req.user?.id;
+
+      // Verificar se usuário tem permissão (admin ou operator)
+      if (!req.user || !['admin', 'operator'].includes(req.user.role)) {
+        return res.error('Acesso negado. Apenas operadores e administradores podem atualizar coordenadas', 403);
+      }
+
+      // Se banco estiver desabilitado, simular atualização
+      if (!NeighborhoodStatus) {
+        return res.success({
+          id: parseInt(id),
+          bairro: 'Bairro Exemplo',
+          status: 'normal',
+          latitude: parseFloat(latitude),
+          longitude: parseFloat(longitude),
+          updated_at: new Date().toISOString()
+        }, 'Coordenadas atualizadas com sucesso');
+      }
+
+      const status = await NeighborhoodStatus.findByPk(id);
+      if (!status) {
+        return res.error('Status não encontrado', 404);
+      }
+
+      // Atualizar coordenadas
+      await status.update({
+        latitude: parseFloat(latitude),
+        longitude: parseFloat(longitude)
+      });
+      
+      const result = {
+        id: status.id,
+        bairro: status.bairro,
+        status: status.status,
+        latitude: status.latitude,
+        longitude: status.longitude,
+        updated_at: status.updatedAt
+      };
+      
+      res.success(result, 'Coordenadas atualizadas com sucesso');
+    } catch (error) {
+      console.error('Erro ao atualizar coordenadas:', error);
+      res.error('Erro ao atualizar coordenadas', 500);
     }
   }
 );
