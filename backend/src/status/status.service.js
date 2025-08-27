@@ -1,14 +1,12 @@
-const { Injectable, NotFoundException, ConflictException } = require('@nestjs/common');
-const { InjectModel } = require('@nestjs/sequelize');
 const { Op } = require('sequelize');
-const { createNeighborhoodStatusModel } = require('../database/models/neighborhood-status.model');
+const { createNeighborhoodStatusModel } = require('../models/neighborhood-status.model');
 const { database } = require('../database/database');
 
 /**
  * Service de status dos bairros
  * Contém toda a lógica de negócio para gerenciamento de status
  */
-const StatusService = Injectable()(class StatusService {
+class StatusService {
   constructor() {
     this.neighborhoodStatusModel = null;
     this.initializeModel();
@@ -78,7 +76,7 @@ const StatusService = Injectable()(class StatusService {
     const status = await this.neighborhoodStatusModel.findByPk(id);
 
     if (!status) {
-      throw new NotFoundException(`Status com ID ${id} não encontrado`);
+      throw new Error(`Status com ID ${id} não encontrado`);
     }
 
     return status.toJSON();
@@ -106,7 +104,7 @@ const StatusService = Injectable()(class StatusService {
     });
 
     if (!status) {
-      throw new NotFoundException(`Status do bairro '${bairro}' não encontrado`);
+      throw new Error(`Status do bairro '${bairro}' não encontrado`);
     }
 
     return status.toJSON();
@@ -130,7 +128,7 @@ const StatusService = Injectable()(class StatusService {
     });
 
     if (existingStatus) {
-      throw new ConflictException(`Já existe status cadastrado para o bairro '${bairro}'`);
+      throw new Error(`Já existe status cadastrado para o bairro '${bairro}'`);
     }
 
     // Criar o status
@@ -146,13 +144,14 @@ const StatusService = Injectable()(class StatusService {
    * Atualizar status
    * @param {number} id - ID do status
    * @param {UpdateStatusDto} updateStatusDto - Dados para atualização
+   * @param {number} userId - ID do usuário que está fazendo a alteração
    * @returns {Promise<NeighborhoodStatus>} - Status atualizado
    */
-  async update(id, updateStatusDto) {
+  async update(id, updateStatusDto, userId = null) {
     const status = await this.neighborhoodStatusModel.findByPk(id);
 
     if (!status) {
-      throw new NotFoundException(`Status com ID ${id} não encontrado`);
+      throw new Error(`Status com ID ${id} não encontrado`);
     }
 
     // Verificar se o bairro já existe (se estiver sendo alterado)
@@ -167,8 +166,19 @@ const StatusService = Injectable()(class StatusService {
       });
 
       if (existingStatus) {
-        throw new ConflictException(`Já existe status cadastrado para o bairro '${updateStatusDto.bairro}'`);
+        throw new Error(`Já existe status cadastrado para o bairro '${updateStatusDto.bairro}'`);
       }
+    }
+
+    // Registrar histórico se o status está sendo alterado
+    if (updateStatusDto.status && updateStatusDto.status !== status.status) {
+      await this.recordStatusHistory({
+        neighborhood_id: id,
+        status: updateStatusDto.status,
+        changed_by: userId,
+        source: 'manual',
+        notes: `Status alterado de '${status.status}' para '${updateStatusDto.status}'`
+      });
     }
 
     // Atualizar o status
@@ -186,7 +196,7 @@ const StatusService = Injectable()(class StatusService {
     const status = await this.neighborhoodStatusModel.findByPk(id);
 
     if (!status) {
-      throw new NotFoundException(`Status com ID ${id} não encontrado`);
+      throw new Error(`Status com ID ${id} não encontrado`);
     }
 
     await status.destroy();
@@ -319,7 +329,7 @@ const StatusService = Injectable()(class StatusService {
     const status = await this.neighborhoodStatusModel.findByPk(id);
 
     if (!status) {
-      throw new NotFoundException(`Status com ID ${id} não encontrado`);
+      throw new Error(`Status com ID ${id} não encontrado`);
     }
 
     // Atualizar coordenadas
@@ -350,6 +360,143 @@ const StatusService = Injectable()(class StatusService {
       sem_informacao: '#9CA3AF' // gray-400
     };
   }
-});
+
+  /**
+   * Registrar mudança de status no histórico
+   * @param {Object} historyData - Dados do histórico
+   * @returns {Promise<void>}
+   */
+  async recordStatusHistory(historyData) {
+    const sequelize = database.getSequelize();
+    if (!sequelize) {
+      console.warn('Banco de dados não disponível para registrar histórico');
+      return;
+    }
+
+    try {
+      await sequelize.query(
+        `INSERT INTO status_history (neighborhood_id, status, changed_at, changed_by, source, notes) 
+         VALUES (:neighborhood_id, :status, NOW(), :changed_by, :source, :notes)`,
+        {
+          replacements: {
+            neighborhood_id: historyData.neighborhood_id,
+            status: historyData.status,
+            changed_by: historyData.changed_by,
+            source: historyData.source || 'manual',
+            notes: historyData.notes
+          },
+          type: sequelize.QueryTypes.INSERT
+        }
+      );
+    } catch (error) {
+      console.error('Erro ao registrar histórico de status:', error);
+      // Não falha a operação principal se o histórico falhar
+    }
+  }
+
+  /**
+   * Buscar histórico de status por período
+   * @param {Object} options - Opções de busca
+   * @param {string} options.from - Data inicial (ISO string)
+   * @param {string} options.to - Data final (ISO string)
+   * @param {number} options.neighborhoodId - ID do bairro (opcional)
+   * @returns {Promise<Array>} - Histórico de mudanças
+   */
+  async getStatusHistory(options = {}) {
+    const sequelize = database.getSequelize();
+    if (!sequelize) {
+      throw new Error('Banco de dados não disponível');
+    }
+
+    const { from, to, neighborhoodId } = options;
+    
+    // Definir período padrão (últimos 30 dias)
+    const fromDate = from ? new Date(from) : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+    const toDate = to ? new Date(to) : new Date();
+
+    let whereClause = 'WHERE sh.changed_at BETWEEN :fromDate AND :toDate';
+    const replacements = { fromDate, toDate };
+
+    if (neighborhoodId) {
+      whereClause += ' AND sh.neighborhood_id = :neighborhoodId';
+      replacements.neighborhoodId = neighborhoodId;
+    }
+
+    const query = `
+      SELECT 
+        sh.id,
+        sh.neighborhood_id,
+        ns.bairro as neighborhood_name,
+        sh.status,
+        sh.changed_at,
+        sh.changed_by,
+        sh.source,
+        sh.notes
+      FROM status_history sh
+      LEFT JOIN neighborhood_status ns ON sh.neighborhood_id = ns.id
+      ${whereClause}
+      ORDER BY sh.changed_at DESC
+    `;
+
+    try {
+      const results = await sequelize.query(query, {
+        replacements,
+        type: sequelize.QueryTypes.SELECT
+      });
+
+      return results;
+    } catch (error) {
+      console.error('Erro ao buscar histórico de status:', error);
+      throw new Error('Erro ao buscar histórico de status');
+    }
+  }
+
+  /**
+   * Obter estatísticas de incidentes por período
+   * @param {Object} options - Opções de busca
+   * @param {string} options.from - Data inicial (ISO string)
+   * @param {string} options.to - Data final (ISO string)
+   * @returns {Promise<Object>} - Estatísticas de incidentes
+   */
+  async getIncidentStats(options = {}) {
+    const sequelize = database.getSequelize();
+    if (!sequelize) {
+      throw new Error('Banco de dados não disponível');
+    }
+
+    const { from, to } = options;
+    
+    // Definir período padrão (últimos 30 dias)
+    const fromDate = from ? new Date(from) : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+    const toDate = to ? new Date(to) : new Date();
+
+    const query = `
+      SELECT 
+        COUNT(*) as total_incidents,
+        COUNT(DISTINCT neighborhood_id) as affected_neighborhoods,
+        status,
+        COUNT(*) as count_by_status
+      FROM status_history 
+      WHERE changed_at BETWEEN :fromDate AND :toDate
+        AND status IN ('intermitente', 'falta')
+      GROUP BY status
+    `;
+
+    try {
+      const results = await sequelize.query(query, {
+        replacements: { fromDate, toDate },
+        type: sequelize.QueryTypes.SELECT
+      });
+
+      return {
+        period: { from: fromDate, to: toDate },
+        incidents: results
+      };
+    } catch (error) {
+      console.error('Erro ao buscar estatísticas de incidentes:', error);
+      throw new Error('Erro ao buscar estatísticas de incidentes');
+    }
+  }
+}
 
 module.exports = { StatusService };

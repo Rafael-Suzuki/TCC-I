@@ -36,7 +36,7 @@ router.get('/',
   validateQuery(Joi.object({
     ...commonSchemas.pagination.describe(),
     ...commonSchemas.search.describe(),
-    status: Joi.string().valid('normal', 'intermitente', 'falta', 'sem_informacao').required(),
+    status: Joi.string().valid('normal', 'intermitente', 'falta', 'sem_informacao').optional(),
     priority: Joi.string().valid('baixa', 'media', 'alta', 'critica'),
     isResolved: Joi.boolean(),
     neighborhood: Joi.string(),
@@ -358,9 +358,27 @@ router.put('/:id',
         return res.error('Status não encontrado', 404);
       }
 
-      await status.update(updateData);
+      // Usar o método update do service que registra histórico
+      const { StatusService } = require('../status/status.service');
       
-      res.success(status, 'Status atualizado com sucesso');
+      // Se o status está sendo alterado, usar o método que registra histórico
+      if (updateData.status && updateData.status !== status.status) {
+        // Garantir que o banco esteja inicializado antes de usar o StatusService
+        if (!database.getSequelize()) {
+          await database.initialize();
+        }
+        
+        const statusService = new StatusService();
+        await statusService.update(id, updateData, req.user?.id);
+      } else {
+        // Para outras atualizações, usar o método padrão do Sequelize
+        await status.update(updateData);
+      }
+      
+      // Buscar o status atualizado
+      const updatedStatus = await NeighborhoodStatus.findByPk(id);
+      
+      res.success(updatedStatus, 'Status atualizado com sucesso');
     } catch (error) {
       console.error('Erro ao atualizar status:', error);
       

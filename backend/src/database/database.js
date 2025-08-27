@@ -32,6 +32,7 @@ class Database {
         username: process.env.DB_USER || 'postgres',
         password: process.env.DB_PASS || '',
         database: process.env.DB_NAME || 'monitor_agua',
+        timezone: 'America/Sao_Paulo', // Configurar timezone para GMT-3
         logging: process.env.NODE_ENV === 'development' ? console.log : false,
         pool: {
           max: 5,
@@ -43,6 +44,9 @@ class Database {
           timestamps: true,
           underscored: true,
           freezeTableName: true,
+        },
+        dialectOptions: {
+          timezone: 'America/Sao_Paulo', // Garantir timezone no nível do driver
         },
       });
 

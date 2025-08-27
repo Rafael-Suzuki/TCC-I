@@ -30,12 +30,26 @@ CREATE TABLE IF NOT EXISTS neighborhood_status (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Tabela de histórico de mudanças de status (para análises)
+CREATE TABLE IF NOT EXISTS status_history (
+    id SERIAL PRIMARY KEY,
+    neighborhood_id INTEGER NOT NULL,
+    status VARCHAR(20) NOT NULL,          -- normal | intermitente | falta | sem_informacao
+    changed_at TIMESTAMP NOT NULL DEFAULT NOW(),
+    changed_by INTEGER,
+    source VARCHAR(20) DEFAULT 'manual',
+    notes TEXT,
+    FOREIGN KEY (neighborhood_id) REFERENCES neighborhood_status(id) ON DELETE CASCADE
+);
+
 -- Índices para melhor performance
 CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
 CREATE INDEX IF NOT EXISTS idx_neighborhood_status_bairro ON neighborhood_status(bairro);
 CREATE INDEX IF NOT EXISTS idx_neighborhood_status_status ON neighborhood_status(status);
 CREATE INDEX IF NOT EXISTS idx_neighborhood_status_created_at ON neighborhood_status(created_at);
 CREATE INDEX IF NOT EXISTS idx_neighborhood_status_lat_lng ON neighborhood_status(latitude, longitude);
+CREATE INDEX IF NOT EXISTS idx_sh_nei_time ON status_history (neighborhood_id, changed_at);
+CREATE INDEX IF NOT EXISTS idx_sh_status_time ON status_history (status, changed_at);
 
 -- Função para atualizar updated_at automaticamente
 CREATE OR REPLACE FUNCTION update_updated_at_column()
@@ -86,6 +100,7 @@ ON CONFLICT DO NOTHING;
 -- Comentários nas tabelas
 COMMENT ON TABLE users IS 'Tabela de usuários do sistema';
 COMMENT ON TABLE neighborhood_status IS 'Tabela de status de abastecimento de água por bairro';
+COMMENT ON TABLE status_history IS 'Histórico de mudanças de status para análises e relatórios';
 
 COMMENT ON COLUMN users.role IS 'Papel do usuário: admin ou user';
 COMMENT ON COLUMN neighborhood_status.status IS 'Status do abastecimento: normal, intermitente, falta, sem_informacao';

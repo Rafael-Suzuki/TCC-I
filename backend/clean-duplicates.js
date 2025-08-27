@@ -4,8 +4,8 @@ require('dotenv').config();
 const pool = new Pool({
   user: process.env.DB_USER || 'postgres',
   host: process.env.DB_HOST || 'localhost',
-  database: process.env.DB_NAME || 'water_monitoring',
-  password: process.env.DB_PASSWORD || 'admin',
+  database: process.env.DB_NAME || 'monitor_agua',
+  password: process.env.DB_PASS || 'admin',
   port: process.env.DB_PORT || 5432,
 });
 
@@ -18,7 +18,7 @@ async function cleanDuplicates() {
     // 1. Encontrar duplicatas
     const duplicatesResult = await client.query(`
       SELECT bairro, COUNT(*) as count, array_agg(id) as ids
-      FROM status 
+      FROM neighborhood_status 
       GROUP BY bairro 
       HAVING COUNT(*) > 1
       ORDER BY bairro
@@ -40,7 +40,7 @@ async function cleanDuplicates() {
       
       if (idsToDelete.length > 0) {
         const deleteResult = await client.query(
-          'DELETE FROM status WHERE id = ANY($1)',
+          'DELETE FROM neighborhood_status WHERE id = ANY($1)',
           [idsToDelete]
         );
         
@@ -50,12 +50,12 @@ async function cleanDuplicates() {
     }
     
     // 2. Verificar resultado final
-    const finalCountResult = await client.query('SELECT COUNT(*) as total FROM status');
+    const finalCountResult = await client.query('SELECT COUNT(*) as total FROM neighborhood_status');
     const finalDuplicatesResult = await client.query(`
       SELECT COUNT(*) as duplicates 
       FROM (
         SELECT bairro 
-        FROM status 
+        FROM neighborhood_status 
         GROUP BY bairro 
         HAVING COUNT(*) > 1
       ) as dup

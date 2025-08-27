@@ -1,6 +1,10 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import dynamic from 'next/dynamic';
-import { useMapEvents } from 'react-leaflet';
+
+// Import Leaflet CSS only on client side
+if (typeof window !== 'undefined') {
+  import('leaflet/dist/leaflet.css');
+}
 
 // Dynamically import Leaflet components to avoid SSR issues
 const MapContainer = dynamic(
@@ -26,20 +30,34 @@ const MapPicker = ({ initialLatLng = null, onPick }) => {
   const [position, setPosition] = useState(initialLatLng || defaultCenter);
   const [inputLat, setInputLat] = useState(initialLatLng ? initialLatLng[0].toString() : '');
   const [inputLng, setInputLng] = useState(initialLatLng ? initialLatLng[1].toString() : '');
+  const [customIcon, setCustomIcon] = useState(null);
   const markerRef = useRef(null);
 
+  // Carregar ícone customizado quando o componente montar
+  useEffect(() => {
+    createDraggableIcon().then(icon => setCustomIcon(icon));
+  }, []);
+
   // Componente interno para capturar eventos do mapa
-  const MapEvents = () => {
-    useMapEvents({
-      click(e) {
-        const { lat, lng } = e.latlng;
-        setPosition([lat, lng]);
-        setInputLat(lat.toFixed(6));
-        setInputLng(lng.toFixed(6));
-      },
-    });
-    return null;
-  };
+  const MapEvents = dynamic(
+    () => {
+      return import('react-leaflet').then((mod) => {
+        const { useMapEvents } = mod;
+        return function MapEventsComponent() {
+          useMapEvents({
+            click(e) {
+              const { lat, lng } = e.latlng;
+              setPosition([lat, lng]);
+              setInputLat(lat.toFixed(6));
+              setInputLng(lng.toFixed(6));
+            },
+          });
+          return null;
+        };
+      });
+    },
+    { ssr: false }
+  );
 
   // Atualizar posição quando inputs mudarem
   const handleInputChange = (type, value) => {
@@ -77,10 +95,10 @@ const MapPicker = ({ initialLatLng = null, onPick }) => {
   };
 
   // Criar ícone customizado para o marcador
-  const createDraggableIcon = () => {
+  const createDraggableIcon = async () => {
     if (typeof window !== 'undefined') {
-      const L = require('leaflet');
-      return new L.DivIcon({
+      const L = await import('leaflet');
+      return new L.default.DivIcon({
         className: 'custom-draggable-marker',
         html: `<div style="background-color: #ef4444; width: 24px; height: 24px; border-radius: 50%; border: 3px solid white; box-shadow: 0 2px 6px rgba(0,0,0,0.4); cursor: move;"></div>`,
         iconSize: [24, 24],
@@ -118,7 +136,7 @@ const MapPicker = ({ initialLatLng = null, onPick }) => {
           <Marker
             position={position}
             draggable={true}
-            icon={createDraggableIcon()}
+            icon={customIcon}
             ref={markerRef}
             eventHandlers={{
               dragend: handleMarkerDrag,

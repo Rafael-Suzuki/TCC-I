@@ -28,34 +28,104 @@ export default function Login() {
     setLoading(true);
     setError('');
 
+    console.log('🚀 Iniciando processo de login...');
+    console.log('📝 Dados do formulário:', formData);
+    console.log('🌐 URL da API:', `${process.env.NEXT_PUBLIC_API_URL}/auth/login`);
+
     try {
+      console.log('📡 Enviando requisição para API...');
+      console.log('🌐 URL completa:', `${process.env.NEXT_PUBLIC_API_URL}/auth/login`);
+      
       const response = await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/auth/login`, formData);
       
-      console.log('Resposta da API:', response.data);
+      console.log('✅ Resposta recebida da API:');
+      console.log('Status:', response.status);
+      console.log('Headers:', response.headers);
+      console.log('Data:', response.data);
       
       if (response.data.success) {
-        console.log('Login bem-sucedido, salvando cookies...');
-        // Parse the nested JSON data
-        const loginData = JSON.parse(response.data.data);
+        console.log('🎉 Login bem-sucedido! Processando dados...');
+        
+        let userData, token;
+        
+        console.log('🔍 Verificando tipo de response.data.data:', typeof response.data.data);
+        
+        // Verificar se response.data.data é uma string (JSON aninhado) ou objeto
+        if (typeof response.data.data === 'string') {
+          console.log('📝 response.data.data é string, fazendo parse...');
+          try {
+            const loginData = JSON.parse(response.data.data);
+            console.log('✅ Parse bem-sucedido:', loginData);
+            userData = loginData.data.user;
+            token = loginData.data.token;
+          } catch (parseError) {
+            console.error('❌ Erro ao fazer parse do JSON:', parseError);
+            console.error('String que causou erro:', response.data.data);
+            throw new Error('Erro ao processar dados de login');
+          }
+        } else {
+          console.log('📝 response.data.data é objeto');
+          userData = response.data.data.user;
+          token = response.data.data.token;
+        }
+        
+        console.log('👤 Dados do usuário extraídos:', userData);
+        console.log('🔑 Token extraído:', token ? 'Token válido recebido' : 'Token não encontrado');
+        
+        if (!userData || !token) {
+          console.error('❌ Dados incompletos:');
+          console.error('userData:', userData);
+          console.error('token:', token);
+          throw new Error('Dados de login incompletos');
+        }
+        
+        console.log('💾 Salvando dados nos cookies e localStorage...');
+        
         // Salvar token nos cookies
-        Cookies.set('token', loginData.data.token, { expires: 7 });
-        Cookies.set('user', JSON.stringify(loginData.data.user), { expires: 7 });
+        Cookies.set('token', token, { expires: 7 });
+        Cookies.set('user', JSON.stringify(userData), { expires: 7 });
         
         // Also save to localStorage for consistency
-        localStorage.setItem('token', loginData.data.token);
-        localStorage.setItem('user', JSON.stringify(loginData.data.user));
+        localStorage.setItem('token', token);
+        localStorage.setItem('user', JSON.stringify(userData));
         
-        console.log('Cookies salvos, redirecionando para dashboard...');
+        console.log('✅ Dados salvos com sucesso!');
+        console.log('🔄 Redirecionando para dashboard...');
+        
         // Redirecionar para dashboard
-        router.push('/dashboard');
+        await router.push('/dashboard');
+        console.log('✅ Redirecionamento executado!');
+      } else {
+        console.error('❌ Login falhou - response.data.success é false');
+        console.error('Mensagem:', response.data.message);
+        throw new Error(response.data.message || 'Login falhou');
       }
     } catch (error) {
-      console.error('Erro no login:', error);
+      console.error('💥 ERRO NO LOGIN:');
+      console.error('Tipo do erro:', error.constructor.name);
+      console.error('Mensagem:', error.message);
+      
+      if (error.response) {
+        console.error('📊 Detalhes da resposta de erro:');
+        console.error('Status:', error.response.status);
+        console.error('StatusText:', error.response.statusText);
+        console.error('Data:', error.response.data);
+        console.error('Headers:', error.response.headers);
+      } else if (error.request) {
+        console.error('📡 Erro de rede - sem resposta do servidor:');
+        console.error('Request:', error.request);
+      } else {
+        console.error('⚙️ Erro de configuração:', error.message);
+      }
+      
       setError(
+        error.response?.data?.message || 
         error.response?.data?.error?.message || 
+        error.message ||
         'Erro ao fazer login. Verifique suas credenciais.'
       );
     } finally {
+      console.log('🏁 Finalizando processo de login...');
       setLoading(false);
     }
   };

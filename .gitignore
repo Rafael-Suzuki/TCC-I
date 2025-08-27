@@ -48,6 +48,9 @@ jspm_packages/
 .npm
 
 # Optional REPL history
+
+# Scripts and test files
+scripts/
 .node_repl_history
 
 # Output of 'npm pack'

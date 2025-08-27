@@ -13,6 +13,7 @@ const { loginUser } = require('./middleware/jwt.auth');
 const usersController = require('./controllers/users.controller');
 const statusController = require('./controllers/status.controller');
 const analyticsController = require('./controllers/analytics.controller');
+const analyticsInstantController = require('./controllers/analytics-instant.controller');
 
 /**
  * Aplicação Express.js para sistema de monitoramento de água
@@ -151,6 +152,7 @@ app.post('/api/auth/logout', (req, res) => {
 app.use('/api/users', usersController);
 app.use('/api/status', statusController);
 app.use('/api/analytics', analyticsController);
+app.use('/api/analytics-instant', analyticsInstantController);
 
 /**
  * Rota para informações da API

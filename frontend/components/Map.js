@@ -1,6 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import dynamic from 'next/dynamic';
 
+// Import Leaflet CSS only on client side
+if (typeof window !== 'undefined') {
+  import('leaflet/dist/leaflet.css');
+}
+
 // Dynamically import Leaflet components to avoid SSR issues
 const MapContainer = dynamic(
   () => import('react-leaflet').then((mod) => mod.MapContainer),

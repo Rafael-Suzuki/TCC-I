@@ -14,7 +14,10 @@ import {
   Cog6ToothIcon,
   EyeIcon,
   EyeSlashIcon,
-  MapPinIcon
+  MapPinIcon,
+  CheckCircleIcon,
+  ExclamationTriangleIcon,
+  ClockIcon
 } from '@heroicons/react/24/outline';
 import MapPicker from '../components/MapPicker';
 
@@ -22,6 +25,18 @@ export default function Dashboard() {
   const [neighborhoods, setNeighborhoods] = useState([]);
   const [users, setUsers] = useState([]);
   const [analytics, setAnalytics] = useState(null);
+  const [analyticsData, setAnalyticsData] = useState({
+    overview: {
+      availability_pct: 0,
+      incidents: { total: 0 },
+      mttr_min: 0,
+      now: { normal: 0, intermitente: 0, falta: 0, sem_informacao: 0 }
+    },
+    ranking: [],
+    timeseries: []
+  });
+  const [analyticsLoading, setAnalyticsLoading] = useState(false);
+  const [analyticsPeriod, setAnalyticsPeriod] = useState('7d'); // 24h, 7d, 30d
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState(null);
   const [activeTab, setActiveTab] = useState('neighborhoods');
@@ -74,9 +89,16 @@ export default function Dashboard() {
   useEffect(() => {
     if (user?.role === 'admin') {
       fetchUsers();
-      fetchAnalytics();
+      fetchAnalyticsData(); // Carregar dados de analytics inicialmente
     }
   }, [user]);
+
+  // Carregar dados de análise quando a aba analytics for ativada
+  useEffect(() => {
+    if (activeTab === 'analytics' && user?.role === 'admin') {
+      fetchAnalyticsData();
+    }
+  }, [activeTab, user]);
 
   const checkAuth = async () => {
     try {
@@ -140,18 +162,74 @@ export default function Dashboard() {
     }
   };
 
-  const fetchAnalytics = async () => {
+  // Função removida - usando fetchAnalyticsData que funciona corretamente
+
+  // Função para buscar dados de análise com período
+  const fetchAnalyticsData = async (period = analyticsPeriod) => {
+    setAnalyticsLoading(true);
     try {
-      console.log('Buscando analytics...');
       const token = Cookies.get('token');
-      const response = await axios.get('http://localhost:3001/api/analytics/interruptions', {
-        headers: { Authorization: `Bearer ${token}` }
+      
+      // Calcular datas baseado no período
+      const now = new Date();
+      const from = new Date();
+      
+      switch (period) {
+        case '24h':
+          from.setHours(now.getHours() - 24);
+          break;
+        case '7d':
+          from.setDate(now.getDate() - 7);
+          break;
+        case '30d':
+          from.setDate(now.getDate() - 30);
+          break;
+        default:
+          from.setDate(now.getDate() - 7);
+      }
+      
+      const fromISO = from.toISOString();
+      const toISO = now.toISOString();
+      
+      // Buscar dados em paralelo
+      const [overviewRes, rankingRes, timeseriesRes] = await Promise.all([
+        axios.get(`http://localhost:3001/api/analytics/overview?from=${fromISO}&to=${toISO}`, {
+          headers: { Authorization: `Bearer ${token}` }
+        }),
+        axios.get(`http://localhost:3001/api/analytics/ranking?from=${fromISO}&to=${toISO}`, {
+          headers: { Authorization: `Bearer ${token}` }
+        }),
+        axios.get(`http://localhost:3001/api/analytics/timeseries/incidents?from=${fromISO}&to=${toISO}&granularity=day`, {
+          headers: { Authorization: `Bearer ${token}` }
+        })
+      ]);
+      
+      // O backend retorna dados com duplo encapsulamento: response.data.data contém uma string JSON
+      const overviewData = JSON.parse(overviewRes.data.data);
+      const rankingData = JSON.parse(rankingRes.data.data);
+      const timeseriesData = JSON.parse(timeseriesRes.data.data);
+      
+      setAnalyticsData({
+        overview: overviewData.data,
+        ranking: rankingData.data,
+        timeseries: timeseriesData.data
       });
-      console.log('Analytics recebidos:', response.data.data);
-      setAnalytics(response.data.data);
     } catch (error) {
-      console.error('Erro ao buscar análises:', error);
+      console.error('Erro ao buscar dados de análise:', error);
+      setAnalyticsData({
+        overview: null,
+        ranking: null,
+        timeseries: null
+      });
+    } finally {
+      setAnalyticsLoading(false);
     }
+  };
+
+  // Função para alterar período e recarregar dados
+  const handlePeriodChange = (newPeriod) => {
+    setAnalyticsPeriod(newPeriod);
+    fetchAnalyticsData(newPeriod);
   };
 
   const handleSubmit = async (e) => {
@@ -403,7 +481,7 @@ export default function Dashboard() {
                       }`}
                     >
                       <ChartBarIcon className="h-5 w-5 inline mr-2" />
-                      Análise de Interrupções
+                      Análises
                     </button>
                   </>
                 )}
@@ -656,35 +734,269 @@ export default function Dashboard() {
 
           {activeTab === 'analytics' && user?.role === 'admin' && (
             <div className="px-4 py-6 sm:px-0">
-              <div className="mb-6">
-                <h2 className="text-lg font-medium text-gray-900">Análise de Interrupções</h2>
-                <p className="text-sm text-gray-600">Estatísticas e análises sobre interrupções no abastecimento</p>
-              </div>
-
               <div className="space-y-6">
-                {analytics ? (
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <div className="bg-red-50 p-4 rounded-lg">
-                      <div className="text-2xl font-bold text-red-600">
-                        {analytics.totalInterruptions || 0}
-                      </div>
-                      <div className="text-sm text-red-800">Total de Interrupções</div>
-                    </div>
-                    <div className="bg-yellow-50 p-4 rounded-lg">
-                      <div className="text-2xl font-bold text-yellow-600">
-                        {analytics.averageDuration || 0}h
-                      </div>
-                      <div className="text-sm text-yellow-800">Duração Média</div>
-                    </div>
-                    <div className="bg-blue-50 p-4 rounded-lg">
-                      <div className="text-2xl font-bold text-blue-600">
-                        {analytics.affectedNeighborhoods || 0}
-                      </div>
-                      <div className="text-sm text-blue-800">Bairros Afetados</div>
+                <div className="flex justify-between items-center">
+                  <h2 className="text-2xl font-bold text-gray-900">Análises</h2>
+                  
+                  <div className="flex items-center space-x-4">
+                    {/* Botão de Atualização Manual */}
+                    <button
+                      onClick={() => fetchAnalyticsData(analyticsPeriod)}
+                      disabled={analyticsLoading}
+                      className="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                      title="Atualizar análises manualmente"
+                    >
+                      <svg className={`h-4 w-4 mr-2 ${analyticsLoading ? 'animate-spin' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                      </svg>
+                      {analyticsLoading ? 'Atualizando...' : 'Atualizar'}
+                    </button>
+                    
+                    {/* Filtro de Período */}
+                    <div className="flex space-x-2">
+                      {['24h', '7d', '30d'].map((period) => (
+                        <button
+                          key={period}
+                          onClick={() => handlePeriodChange(period)}
+                          className={`px-3 py-1 rounded-md text-sm font-medium ${
+                            analyticsPeriod === period
+                              ? 'bg-blue-100 text-blue-700'
+                              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                          }`}
+                        >
+                          {period === '24h' ? '24 horas' : period === '7d' ? '7 dias' : '30 dias'}
+                        </button>
+                      ))}
                     </div>
                   </div>
+                </div>
+
+                {analyticsLoading ? (
+                  <div className="text-center py-12">
+                    <div className="text-gray-500">Carregando análises...</div>
+                  </div>
+                ) : analyticsData.overview ? (
+                  <>
+                    {/* Cards de Métricas */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                      {/* Disponibilidade */}
+                      <div className="bg-white overflow-hidden shadow rounded-lg">
+                        <div className="p-5">
+                          <div className="flex items-center">
+                            <div className="flex-shrink-0">
+                               <CheckCircleIcon className="h-6 w-6 text-green-400" />
+                             </div>
+                            <div className="ml-5 w-0 flex-1">
+                              <dl>
+                                <dt className="text-sm font-medium text-gray-500 truncate">
+                                  Disponibilidade
+                                </dt>
+                                <dd className="text-lg font-medium text-gray-900">
+                                  {analyticsData.overview.availability_pct?.toFixed(1) || 0}%
+                                </dd>
+                              </dl>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Total de Incidentes */}
+                      <div className="bg-white overflow-hidden shadow rounded-lg">
+                        <div className="p-5">
+                          <div className="flex items-center">
+                            <div className="flex-shrink-0">
+                               <ExclamationTriangleIcon className="h-6 w-6 text-red-400" />
+                             </div>
+                            <div className="ml-5 w-0 flex-1">
+                              <dl>
+                                <dt className="text-sm font-medium text-gray-500 truncate">
+                                  Total de Incidentes
+                                </dt>
+                                <dd className="text-lg font-medium text-gray-900">
+                                  {analyticsData.overview.incidents?.total || 0}
+                                </dd>
+                              </dl>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* MTTR */}
+                      <div className="bg-white overflow-hidden shadow rounded-lg">
+                        <div className="p-5">
+                          <div className="flex items-center">
+                            <div className="flex-shrink-0">
+                               <ClockIcon className="h-6 w-6 text-yellow-400" />
+                             </div>
+                            <div className="ml-5 w-0 flex-1">
+                              <dl>
+                                <dt className="text-sm font-medium text-gray-500 truncate">
+                                  MTTR (min)
+                                </dt>
+                                <dd className="text-lg font-medium text-gray-900">
+                                  {analyticsData.overview.mttr_min?.toFixed(0) || 'N/A'}
+                                </dd>
+                              </dl>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Bairros Sem Água Agora */}
+                      <div className="bg-white overflow-hidden shadow rounded-lg">
+                        <div className="p-5">
+                          <div className="flex items-center">
+                            <div className="flex-shrink-0">
+                              <MapPinIcon className="h-6 w-6 text-blue-400" />
+                            </div>
+                            <div className="ml-5 w-0 flex-1">
+                              <dl>
+                                <dt className="text-sm font-medium text-gray-500 truncate">
+                                  Sem Água Agora
+                                </dt>
+                                <dd className="text-lg font-medium text-gray-900">
+                                  {analyticsData.overview.now?.falta || 0}
+                                </dd>
+                              </dl>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Rankings */}
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                      {/* Top 5 por Incidentes */}
+                      <div className="bg-white shadow overflow-hidden sm:rounded-md">
+                        <div className="px-4 py-5 sm:px-6">
+                          <h3 className="text-lg leading-6 font-medium text-gray-900">
+                            Top 5 - Mais Incidentes
+                          </h3>
+                          <p className="mt-1 max-w-2xl text-sm text-gray-500">
+                            Bairros com mais incidentes no período
+                          </p>
+                        </div>
+                        <ul className="divide-y divide-gray-200">
+                          {analyticsData.ranking?.by_incidents?.slice(0, 5).map((item, index) => (
+                            <li key={item.neighborhood_id} className="px-4 py-4 sm:px-6">
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center">
+                                  <div className="flex-shrink-0">
+                                    <div className={`h-8 w-8 rounded-full flex items-center justify-center ${
+                                      index === 0 ? 'bg-yellow-100 text-yellow-800' :
+                                      index === 1 ? 'bg-gray-100 text-gray-800' :
+                                      index === 2 ? 'bg-orange-100 text-orange-800' :
+                                      'bg-gray-50 text-gray-600'
+                                    }`}>
+                                      <span className="text-sm font-medium">
+                                        {index + 1}
+                                      </span>
+                                    </div>
+                                  </div>
+                                  <div className="ml-4">
+                                    <div className="text-sm font-medium text-gray-900">
+                                      {item.name}
+                                    </div>
+                                  </div>
+                                </div>
+                                <div className="text-sm font-medium text-gray-900">
+                                  {item.count} incidentes
+                                </div>
+                              </div>
+                            </li>
+                          )) || (
+                            <li className="px-4 py-4 sm:px-6 text-center text-gray-500">
+                              Nenhum dado disponível
+                            </li>
+                          )}
+                        </ul>
+                      </div>
+
+                      {/* Top 5 por Downtime */}
+                      <div className="bg-white shadow overflow-hidden sm:rounded-md">
+                        <div className="px-4 py-5 sm:px-6">
+                          <h3 className="text-lg leading-6 font-medium text-gray-900">
+                            Top 5 - Maior Downtime
+                          </h3>
+                          <p className="mt-1 max-w-2xl text-sm text-gray-500">
+                            Bairros com maior tempo de inatividade
+                          </p>
+                        </div>
+                        <ul className="divide-y divide-gray-200">
+                          {analyticsData.ranking?.by_downtime_min?.slice(0, 5).map((item, index) => (
+                            <li key={item.neighborhood_id} className="px-4 py-4 sm:px-6">
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center">
+                                  <div className="flex-shrink-0">
+                                    <div className={`h-8 w-8 rounded-full flex items-center justify-center ${
+                                      index === 0 ? 'bg-red-100 text-red-800' :
+                                      index === 1 ? 'bg-orange-100 text-orange-800' :
+                                      index === 2 ? 'bg-yellow-100 text-yellow-800' :
+                                      'bg-gray-50 text-gray-600'
+                                    }`}>
+                                      <span className="text-sm font-medium">
+                                        {index + 1}
+                                      </span>
+                                    </div>
+                                  </div>
+                                  <div className="ml-4">
+                                    <div className="text-sm font-medium text-gray-900">
+                                      {item.name}
+                                    </div>
+                                  </div>
+                                </div>
+                                <div className="text-sm font-medium text-gray-900">
+                                  {Math.round(item.minutes)} min
+                                </div>
+                              </div>
+                            </li>
+                          )) || (
+                            <li className="px-4 py-4 sm:px-6 text-center text-gray-500">
+                              Nenhum dado disponível
+                            </li>
+                          )}
+                        </ul>
+                      </div>
+                    </div>
+
+                    {/* Série Temporal de Incidentes */}
+                    {analyticsData.timeseries?.points && analyticsData.timeseries.points.length > 0 && (
+                      <div className="bg-white shadow overflow-hidden sm:rounded-md">
+                        <div className="px-4 py-5 sm:px-6">
+                          <h3 className="text-lg leading-6 font-medium text-gray-900">
+                            Incidentes por Dia
+                          </h3>
+                          <p className="mt-1 max-w-2xl text-sm text-gray-500">
+                            Distribuição temporal dos incidentes
+                          </p>
+                        </div>
+                        <div className="px-4 py-4">
+                          <div className="flex items-end space-x-1 h-32">
+                            {analyticsData.timeseries.points.map((point, index) => {
+                              const maxCount = Math.max(...analyticsData.timeseries.points.map(p => p.count));
+                              const height = maxCount > 0 ? (point.count / maxCount) * 100 : 0;
+                              return (
+                                <div key={index} className="flex-1 flex flex-col items-center">
+                                  <div 
+                                    className="bg-blue-500 w-full rounded-t"
+                                    style={{ height: `${height}%` }}
+                                    title={`${point.date}: ${point.count} incidentes`}
+                                  ></div>
+                                  <div className="text-xs text-gray-500 mt-1 transform -rotate-45 origin-top-left">
+                                    {new Date(point.date).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </>
                 ) : (
-                  <div className="text-gray-500">Carregando dados de análise...</div>
+                  <div className="text-center py-12">
+                    <div className="text-gray-500">Nenhum dado disponível para o período selecionado</div>
+                  </div>
                 )}
               </div>
             </div>

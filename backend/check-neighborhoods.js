@@ -27,7 +27,7 @@ const officialNeighborhoods = [
   'Vila Bretas', 'Vila Tanque', 'Vitória'
 ];
 
-async function fixNeighborhoods() {
+async function checkNeighborhoods() {
   const client = await pool.connect();
   
   try {
@@ -52,27 +52,21 @@ async function fixNeighborhoods() {
     if (missingNeighborhoods.length > 0) {
       console.log('\n❌ Bairros oficiais faltando no banco:');
       missingNeighborhoods.forEach(n => console.log(`   - ${n}`));
-      
-      // Adicionar bairros faltando
-      for (const neighborhood of missingNeighborhoods) {
-        await client.query(
-          'INSERT INTO status (bairro, status, "createdAt", "updatedAt") VALUES ($1, $2, NOW(), NOW())',
-          [neighborhood, 'normal']
-        );
-        console.log(`✅ Adicionado: ${neighborhood}`);
-      }
+      console.log('\n⚠️  ATENÇÃO: Estes bairros devem ser adicionados manualmente por um operador/administrador.');
+      console.log('   Use o sistema de administração para adicionar os bairros faltantes.');
     }
     
     // 4. Verificar total final
     const finalResult = await client.query('SELECT COUNT(*) as total FROM status');
     const finalTotal = parseInt(finalResult.rows[0].total);
     
-    console.log(`\n📈 Total final de bairros no banco: ${finalTotal}`);
+    console.log(`\n📈 Total de bairros no banco: ${finalTotal}`);
     
     if (finalTotal === 65) {
       console.log('✅ Perfeito! Todos os 65 bairros oficiais estão no banco.');
     } else {
       console.log(`⚠️  Atenção: Esperado 65 bairros, encontrado ${finalTotal}`);
+      console.log('   Para corrigir, adicione os bairros faltantes através do sistema de administração.');
     }
     
   } catch (error) {
@@ -83,4 +77,4 @@ async function fixNeighborhoods() {
   }
 }
 
-fixNeighborhoods();
+checkNeighborhoods();
